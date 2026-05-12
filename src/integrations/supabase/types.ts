@@ -14,7 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      churches: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          owner_id: string
+          pastor: string | null
+          phone: string | null
+          type: Database["public"]["Enums"]["church_type"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          owner_id: string
+          pastor?: string | null
+          phone?: string | null
+          type?: Database["public"]["Enums"]["church_type"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_id?: string
+          pastor?: string | null
+          phone?: string | null
+          type?: Database["public"]["Enums"]["church_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          church_id: string
+          created_at: string
+          description: string | null
+          id: string
+          owner_id: string
+          starts_at: string
+          title: string
+          type: Database["public"]["Enums"]["event_type"]
+          updated_at: string
+        }
+        Insert: {
+          church_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id: string
+          starts_at: string
+          title: string
+          type?: Database["public"]["Enums"]["event_type"]
+          updated_at?: string
+        }
+        Update: {
+          church_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id?: string
+          starts_at?: string
+          title?: string
+          type?: Database["public"]["Enums"]["event_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          birthday: string | null
+          church_id: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          type: Database["public"]["Enums"]["member_type"]
+          updated_at: string
+        }
+        Insert: {
+          birthday?: string | null
+          church_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          type?: Database["public"]["Enums"]["member_type"]
+          updated_at?: string
+        }
+        Update: {
+          birthday?: string | null
+          church_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          type?: Database["public"]["Enums"]["member_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          church_id: string
+          created_at: string
+          description: string | null
+          id: string
+          occurred_at: string
+          owner_id: string
+          type: Database["public"]["Enums"]["tx_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          church_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          occurred_at?: string
+          owner_id: string
+          type: Database["public"]["Enums"]["tx_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          church_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          occurred_at?: string
+          owner_id?: string
+          type?: Database["public"]["Enums"]["tx_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +232,10 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      church_type: "matriz" | "filial"
+      event_type: "culto" | "reuniao" | "campanha" | "outro"
+      member_type: "member" | "visitor" | "leader"
+      tx_type: "income" | "expense"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +362,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      church_type: ["matriz", "filial"],
+      event_type: ["culto", "reuniao", "campanha", "outro"],
+      member_type: ["member", "visitor", "leader"],
+      tx_type: ["income", "expense"],
+    },
   },
 } as const
