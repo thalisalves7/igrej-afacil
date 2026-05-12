@@ -13,7 +13,11 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppOnboardingRouteImport } from './routes/app.onboarding'
+import { Route as AppMembrosRouteImport } from './routes/app.membros'
+import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
+import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -35,9 +39,29 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOnboardingRoute = AppOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMembrosRoute = AppMembrosRouteImport.update({
+  id: '/membros',
+  path: '/membros',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -45,13 +69,21 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/app/agenda': typeof AppAgendaRoute
+  '/app/financeiro': typeof AppFinanceiroRoute
+  '/app/membros': typeof AppMembrosRoute
   '/app/onboarding': typeof AppOnboardingRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/app/agenda': typeof AppAgendaRoute
+  '/app/financeiro': typeof AppFinanceiroRoute
+  '/app/membros': typeof AppMembrosRoute
   '/app/onboarding': typeof AppOnboardingRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -59,15 +91,46 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/app/agenda': typeof AppAgendaRoute
+  '/app/financeiro': typeof AppFinanceiroRoute
+  '/app/membros': typeof AppMembrosRoute
   '/app/onboarding': typeof AppOnboardingRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/auth' | '/app/onboarding' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/auth'
+    | '/app/agenda'
+    | '/app/financeiro'
+    | '/app/membros'
+    | '/app/onboarding'
+    | '/app/perfil'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/app/onboarding' | '/app'
-  id: '__root__' | '/' | '/app' | '/auth' | '/app/onboarding' | '/app/'
+  to:
+    | '/'
+    | '/auth'
+    | '/app/agenda'
+    | '/app/financeiro'
+    | '/app/membros'
+    | '/app/onboarding'
+    | '/app/perfil'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/auth'
+    | '/app/agenda'
+    | '/app/financeiro'
+    | '/app/membros'
+    | '/app/onboarding'
+    | '/app/perfil'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/onboarding': {
       id: '/app/onboarding'
       path: '/onboarding'
@@ -113,16 +183,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOnboardingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/membros': {
+      id: '/app/membros'
+      path: '/membros'
+      fullPath: '/app/membros'
+      preLoaderRoute: typeof AppMembrosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/financeiro': {
+      id: '/app/financeiro'
+      path: '/financeiro'
+      fullPath: '/app/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/agenda': {
+      id: '/app/agenda'
+      path: '/agenda'
+      fullPath: '/app/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
+  AppFinanceiroRoute: typeof AppFinanceiroRoute
+  AppMembrosRoute: typeof AppMembrosRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
+  AppPerfilRoute: typeof AppPerfilRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
+  AppFinanceiroRoute: AppFinanceiroRoute,
+  AppMembrosRoute: AppMembrosRoute,
   AppOnboardingRoute: AppOnboardingRoute,
+  AppPerfilRoute: AppPerfilRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
