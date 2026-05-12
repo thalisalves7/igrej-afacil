@@ -69,15 +69,19 @@ function Nav() {
           </nav>
           <div className="flex items-center gap-2">
             <ThemeSwitcher />
-            <button className="hidden h-10 rounded-full border border-border px-4 text-sm font-medium text-foreground/90 transition-colors hover:border-primary/50 sm:inline-flex">
+            <Link
+              to="/auth"
+              className="hidden h-10 items-center rounded-full border border-border px-4 text-sm font-medium text-foreground/90 transition-colors hover:border-primary/50 sm:inline-flex"
+            >
               Entrar
-            </button>
-            <button
+            </Link>
+            <Link
+              to="/auth"
               className="inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold text-primary-foreground"
               style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
             >
               Criar conta
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -103,16 +107,20 @@ function Hero() {
           sistema simples, moderno e feito para liderança pastoral.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <button
+          <Link
+            to="/auth"
             className="group inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
             style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
           >
             Criar conta grátis
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
-          <button className="inline-flex h-12 items-center rounded-full border border-border bg-surface/60 px-6 text-sm font-medium text-foreground backdrop-blur transition-colors hover:border-primary/40">
+          </Link>
+          <Link
+            to="/auth"
+            className="inline-flex h-12 items-center rounded-full border border-border bg-surface/60 px-6 text-sm font-medium text-foreground backdrop-blur transition-colors hover:border-primary/40"
+          >
             Entrar
-          </button>
+          </Link>
         </div>
         <div className="mt-6 flex items-center justify-center gap-5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-primary" /> Sem cartão</span>
@@ -292,16 +300,20 @@ function CtaBlock() {
           ministerial inteligente na palma da mão.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <button
+          <Link
+            to="/auth"
             className="inline-flex h-12 items-center gap-2 rounded-full px-7 text-sm font-semibold text-primary-foreground"
             style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
           >
             Criar conta grátis
             <ArrowRight className="h-4 w-4" />
-          </button>
-          <button className="inline-flex h-12 items-center rounded-full border border-border bg-surface/60 px-6 text-sm font-medium backdrop-blur">
-            Falar com a equipe
-          </button>
+          </Link>
+          <Link
+            to="/auth"
+            className="inline-flex h-12 items-center rounded-full border border-border bg-surface/60 px-6 text-sm font-medium backdrop-blur"
+          >
+            Entrar
+          </Link>
         </div>
       </div>
     </section>
