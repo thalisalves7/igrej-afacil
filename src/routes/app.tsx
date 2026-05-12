@@ -55,20 +55,22 @@ function AppLayout() {
   );
 }
 
+type NavItem = { kind: "link"; to: string; icon: typeof Home; label: string } | { kind: "plus" };
+
 function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
-  const items = [
-    { to: "/app", icon: Home, label: "Início" },
-    { to: "/app/membros", icon: Users, label: "Membros" },
-    { plus: true },
-    { to: "/app/financeiro", icon: Wallet, label: "Finanças" },
-    { to: "/app/perfil", icon: User, label: "Perfil" },
-  ] as const;
+  const items: NavItem[] = [
+    { kind: "link", to: "/app", icon: Home, label: "Início" },
+    { kind: "link", to: "/app/membros", icon: Users, label: "Membros" },
+    { kind: "plus" },
+    { kind: "link", to: "/app/financeiro", icon: Wallet, label: "Finanças" },
+    { kind: "link", to: "/app/perfil", icon: User, label: "Perfil" },
+  ];
 
   return (
     <nav className="fixed bottom-4 left-1/2 z-30 w-[min(100%-1.5rem,28rem)] -translate-x-1/2">
       <div className="glass flex items-center justify-around rounded-full px-2 py-2 shadow-[var(--shadow-soft)]">
         {items.map((it, i) => {
-          if ("plus" in it && it.plus) {
+          if (it.kind === "plus") {
             return (
               <button
                 key={i}
@@ -81,8 +83,8 @@ function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
               </button>
             );
           }
-          const Icon = it.icon!;
-          const isActive = active === it.to || (it.to !== "/app" && active.startsWith(it.to!));
+          const Icon = it.icon;
+          const isActive = active === it.to || (it.to !== "/app" && active.startsWith(it.to));
           return (
             <Link
               key={it.to}
