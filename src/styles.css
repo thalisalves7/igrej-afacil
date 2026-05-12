@@ -185,6 +185,18 @@
     background-clip: text;
     color: transparent;
   }
+
+  .input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--input);
+    background: var(--surface);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color var(--transition-smooth);
+  }
+  .input:focus { border-color: var(--primary); }
 }
 
 @keyframes float-slow {
