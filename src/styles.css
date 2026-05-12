@@ -197,11 +197,6 @@
     transition: border-color var(--transition-smooth);
   }
   .input:focus { border-color: var(--primary); }
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
 }
 
 @keyframes float-slow {
