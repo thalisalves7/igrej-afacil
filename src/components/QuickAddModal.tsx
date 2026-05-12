@@ -185,7 +185,7 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
     setBusy(true);
     const { error } = await supabase.from("members").insert({
       owner_id: user.id,
-      church_id: churchId || churches?.[0]?.id,
+      church_id: churchId,
       type: memberType,
       name,
       phone: phone || null,
@@ -227,7 +227,7 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
     setBusy(true);
     const { error } = await supabase.from("transactions").insert({
       owner_id: user.id,
-      church_id: churchId || churches?.[0]?.id,
+      church_id: churchId,
       type: txType,
       amount: Number(amount.replace(",", ".")),
       category: category || null,
@@ -284,7 +284,7 @@ function EventForm({ eventType, onDone }: { eventType: "culto" | "reuniao" | "ca
     setBusy(true);
     const { error } = await supabase.from("events").insert({
       owner_id: user.id,
-      church_id: churchId || churches?.[0]?.id,
+      church_id: churchId,
       type: eventType,
       title,
       starts_at: new Date(when).toISOString(),
