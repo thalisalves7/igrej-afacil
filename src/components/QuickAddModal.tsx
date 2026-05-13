@@ -270,7 +270,29 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [churchId, setChurchId] = useState(() => churches?.[0]?.id ?? "");
+  const [titherName, setTitherName] = useState("");
+  const [titherMemberId, setTitherMemberId] = useState<string | null>(null);
+  const [showSuggest, setShowSuggest] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const isTithe = category === "Dízimo";
+
+  // Lookup members for autocomplete (only when needed)
+  const { data: memberOptions = [] } = useQuery({
+    queryKey: ["members-lookup", user?.id, churchId],
+    enabled: !!user && isTithe,
+    queryFn: async () => {
+      let q = supabase.from("members").select("id, name, church_id").order("name");
+      if (churchId) q = q.eq("church_id", churchId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const suggestions = titherName.length >= 1
+    ? memberOptions.filter((m) => m.name.toLowerCase().includes(titherName.toLowerCase())).slice(0, 5)
+    : [];
 
   const categories = txType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -278,6 +300,7 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
     e.preventDefault();
     if (!user) return;
     if (!category) return toast.error("Escolha uma categoria");
+    if (isTithe && !titherName.trim()) return toast.error("Informe o nome do dizimista");
     setBusy(true);
     const { error } = await supabase.from("transactions").insert({
       owner_id: user.id,
@@ -286,10 +309,12 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
       amount: Number(amount.replace(",", ".")),
       category,
       description: description || null,
-    });
+      tither_name: isTithe ? titherName.trim() : null,
+      tither_member_id: isTithe ? titherMemberId : null,
+    } as any);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success(txType === "income" ? "Entrada registrada!" : "Saída registrada!");
+    toast.success(isTithe ? "Dízimo registrado!" : txType === "income" ? "Entrada registrada!" : "Saída registrada!");
     invalidate();
     onDone();
   };
@@ -319,26 +344,65 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
     );
   }
 
-  // Step 2: amount + optional note
+  // Step 2: form
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="flex items-center justify-between rounded-xl bg-surface-elevated px-3 py-2">
         <span className="text-xs text-muted-foreground">Categoria</span>
         <button
           type="button"
-          onClick={() => setCategory("")}
+          onClick={() => { setCategory(""); setTitherName(""); setTitherMemberId(null); }}
           className="text-sm font-semibold text-primary hover:underline"
         >
           {category} ✎
         </button>
       </div>
+
+      <ChurchSelect value={churchId} onChange={(v) => { setChurchId(v); setTitherMemberId(null); }} />
+
+      {isTithe && (
+        <FormField label="Dizimista">
+          <div className="relative">
+            <input
+              value={titherName}
+              onChange={(e) => { setTitherName(e.target.value); setTitherMemberId(null); setShowSuggest(true); }}
+              onFocus={() => setShowSuggest(true)}
+              onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
+              required
+              placeholder="Digite o nome…"
+              className="input"
+              autoComplete="off"
+            />
+            {showSuggest && suggestions.length > 0 && (
+              <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg">
+                {suggestions.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { setTitherName(m.name); setTitherMemberId(m.id); setShowSuggest(false); }}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-primary/10"
+                    >
+                      {m.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {titherMemberId ? "✓ Membro vinculado" : "Pode digitar um nome novo (visitante)."}
+            </p>
+          </div>
+        </FormField>
+      )}
+
       <FormField label="Valor (R$)">
         <input
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           required
-          autoFocus
+          autoFocus={!isTithe}
           placeholder="0,00"
           className="input text-2xl font-semibold"
         />
@@ -346,7 +410,6 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
       <FormField label="Observação (opcional)">
         <input value={description} onChange={(e) => setDescription(e.target.value)} className="input" />
       </FormField>
-      <ChurchSelect value={churchId} onChange={setChurchId} />
       <SubmitBtn busy={busy} label="Salvar" />
     </form>
   );
