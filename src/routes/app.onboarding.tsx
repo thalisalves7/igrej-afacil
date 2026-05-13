@@ -13,7 +13,7 @@ export const Route = createFileRoute("/app/onboarding")({
 function Onboarding() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const invalidate = useInvalidateAll();
+  const qc = useQueryClient();
   const [name, setName] = useState("");
   const [pastor, setPastor] = useState("");
   const [phone, setPhone] = useState("");
@@ -24,18 +24,25 @@ function Onboarding() {
     e.preventDefault();
     if (!user) return;
     setBusy(true);
-    const { error } = await supabase.from("churches").insert({
-      owner_id: user.id,
-      type: "matriz",
-      name,
-      pastor: pastor || null,
-      phone: phone || null,
-      address: address || null,
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
+    const { data, error } = await supabase
+      .from("churches")
+      .insert({
+        owner_id: user.id,
+        type: "matriz",
+        name,
+        pastor: pastor || null,
+        phone: phone || null,
+        address: address || null,
+      })
+      .select()
+      .single();
+    if (error) {
+      setBusy(false);
+      return toast.error(error.message);
+    }
+    qc.setQueryData(["churches", user.id], [data]);
+    await qc.invalidateQueries({ queryKey: ["churches", user.id] });
     toast.success("Igreja matriz criada!");
-    invalidate();
     navigate({ to: "/app" });
   };
 
