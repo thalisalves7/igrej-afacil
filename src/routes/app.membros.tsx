@@ -6,7 +6,8 @@ import { useChurches, useActiveChurch } from "@/lib/data";
 import { ChurchFilter } from "@/components/ChurchFilter";
 import { scopedChurchIds } from "./app.index";
 import { useState, useMemo } from "react";
-import { Phone, Cake, Search, UserCheck, UserPlus, Crown } from "lucide-react";
+import { Phone, Cake, Search } from "lucide-react";
+import { MINISTERIAL_ROLES, roleTone } from "@/lib/ministerial-roles";
 
 export const Route = createFileRoute("/app/membros")({
   component: Members,
@@ -16,7 +17,7 @@ function Members() {
   const { user } = useAuth();
   const { data: churches } = useChurches();
   const { value: filter } = useActiveChurch();
-  const [tab, setTab] = useState<"all" | "member" | "visitor" | "leader">("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [q, setQ] = useState("");
 
   const { data: members = [] } = useQuery({
@@ -32,17 +33,34 @@ function Members() {
     },
   });
 
+  const roleCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    members.forEach((m) => {
+      const r = (m as any).ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+      c[r] = (c[r] ?? 0) + 1;
+    });
+    return c;
+  }, [members]);
+
   const filtered = useMemo(
-    () => members.filter((m) => (tab === "all" || m.type === tab) && (!q || m.name.toLowerCase().includes(q.toLowerCase()))),
-    [members, tab, q],
+    () =>
+      members.filter((m) => {
+        const r = (m as any).ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+        const okRole = roleFilter === "all" || r === roleFilter;
+        const okQ = !q || m.name.toLowerCase().includes(q.toLowerCase());
+        return okRole && okQ;
+      }),
+    [members, roleFilter, q],
   );
 
   const tabs = [
     { id: "all", label: "Todos", count: members.length },
-    { id: "member", label: "Membros", count: members.filter((m) => m.type === "member").length },
-    { id: "visitor", label: "Visitantes", count: members.filter((m) => m.type === "visitor").length },
-    { id: "leader", label: "Líderes", count: members.filter((m) => m.type === "leader").length },
-  ] as const;
+    ...MINISTERIAL_ROLES.filter((r) => roleCounts[r]).map((r) => ({
+      id: r,
+      label: r,
+      count: roleCounts[r] ?? 0,
+    })),
+  ];
 
   return (
     <div className="mx-auto max-w-2xl px-5 pt-8">
@@ -52,6 +70,21 @@ function Members() {
       </header>
 
       <ChurchFilter />
+
+      {/* Painel ministerial */}
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+        {(["Pastor(a)", "Presbítero", "Diácono", "Líder", "Missionário(a)"] as const).map((r) => {
+          const t = roleTone(r);
+          return (
+            <div key={r} className="neu-card p-2.5 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{r}</p>
+              <p className={`mt-0.5 text-lg font-bold`} style={{ color: `var(--${t.dot.replace("bg-", "")})` }}>
+                {roleCounts[r] ?? 0}
+              </p>
+            </div>
+          );
+        })}
+      </div>
 
       <div className="relative mt-4">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -63,13 +96,13 @@ function Members() {
         />
       </div>
 
-      <div className="mt-3 flex gap-2 overflow-x-auto">
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => setRoleFilter(t.id)}
             className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium ${
-              tab === t.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+              roleFilter === t.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
             }`}
           >
             {t.label} <span className="opacity-60">{t.count}</span>
@@ -84,16 +117,22 @@ function Members() {
           </div>
         )}
         {filtered.map((m) => {
-          const Icon = m.type === "leader" ? Crown : m.type === "visitor" ? UserPlus : UserCheck;
-          const tone = m.type === "leader" ? "text-primary" : m.type === "visitor" ? "text-success" : "text-foreground";
+          const role = (m as any).ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+          const t = roleTone(role);
           return (
             <div key={m.id} className="neu-card flex items-center gap-3 p-4">
-              <span className={`grid h-10 w-10 place-items-center rounded-xl bg-surface-elevated ${tone}`}>
-                <Icon className="h-4 w-4" />
+              <span
+                className="grid h-10 w-10 place-items-center rounded-xl bg-surface-elevated text-base"
+                aria-hidden
+              >
+                {t.emoji}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-semibold">{m.name}</p>
-                <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.badge}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} /> {role}
+                  </span>
                   {m.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {m.phone}</span>}
                   {m.birthday && <span className="inline-flex items-center gap-1"><Cake className="h-3 w-3" /> {new Date(m.birthday).toLocaleDateString("pt-BR")}</span>}
                 </div>

@@ -32,7 +32,11 @@ type Tx = {
   description: string | null;
   occurred_at: string;
   church_id: string;
+  tither_name: string | null;
+  tither_member_id: string | null;
 };
+
+type SubTab = "overview" | "income" | "expense" | "tithers";
 
 function Finance() {
   const { user } = useAuth();
@@ -40,6 +44,7 @@ function Finance() {
   const { value: filter } = useActiveChurch();
   const [range, setRange] = useState<(typeof RANGES)[number]["id"]>("30");
   const days = RANGES.find((r) => r.id === range)!.days;
+  const [tab, setTab] = useState<SubTab>("overview");
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["transactions", user?.id, filter, range],
@@ -63,6 +68,7 @@ function Finance() {
 
   const chartData = useMemo(() => buildSeries(txs, days), [txs, days]);
   const insights = useMemo(() => buildInsights(txs), [txs]);
+  const titheStats = useMemo(() => buildTitheStats(txs, churches ?? []), [txs, churches]);
 
   const churchLabel = (() => {
     if (filter === "all") return "Todas as igrejas";
@@ -72,13 +78,17 @@ function Finance() {
   })();
 
   const sendWhatsapp = () => {
+    const topChurch = titheStats.byChurch[0];
     const text =
       `📊 *Resumo Financeiro — ${churchLabel}*\n` +
       `🗓 Últimos ${days} dias\n\n` +
       `💰 Entradas: ${fmt(totals.ins)}\n` +
       `📤 Saídas: ${fmt(totals.outs)}\n` +
       `✅ Saldo: ${fmt(totals.balance)}\n\n` +
-      `_Relatório gerado pelo Igreja Fácil_`;
+      `📌 Total de Dízimos: ${fmt(titheStats.total)}\n` +
+      `📌 Dizimistas: ${titheStats.uniqueCount}\n` +
+      (topChurch ? `📌 Igreja com maior arrecadação: ${topChurch.name} (${fmt(topChurch.total)})\n` : "") +
+      `\n_Relatório gerado pelo Igreja Fácil_`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -105,13 +115,36 @@ function Finance() {
       txs.slice(0, 35).forEach((t) => {
         const sign = t.type === "income" ? "+" : "-";
         doc.text(
-          `${t.occurred_at}   ${sign} ${fmt(t.amount)}   ${(t.category ?? "")}  ${(t.description ?? "")}`.slice(0, 95),
+          `${t.occurred_at}   ${sign} ${fmt(t.amount)}   ${(t.category ?? "")}  ${(t.tither_name ?? t.description ?? "")}`.slice(0, 95),
           14,
           y,
         );
         y += 6;
         if (y > 280) { doc.addPage(); y = 20; }
       });
+
+      // Dizimistas
+      if (titheStats.byPerson.length) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        y += 6;
+        doc.setFontSize(12);
+        doc.text(`Dizimistas — ${fmt(titheStats.total)} (${titheStats.uniqueCount})`, 14, y);
+        y += 8;
+        doc.setFontSize(10);
+        titheStats.byChurch.forEach((c) => {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.setTextColor(120);
+          doc.text(`${c.name}: ${fmt(c.total)}`, 14, y);
+          doc.setTextColor(0);
+          y += 6;
+        });
+        y += 2;
+        titheStats.byPerson.slice(0, 40).forEach((p) => {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.text(`${p.name.slice(0, 40).padEnd(40)} ${fmt(p.total)}`, 14, y);
+          y += 6;
+        });
+      }
 
       doc.setFontSize(9);
       doc.setTextColor(140);
@@ -142,20 +175,28 @@ function Finance() {
         </button>
       </div>
 
-      {/* Hero balance */}
-      <div className="neu-card mt-5 p-6">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-          <Wallet className="h-3.5 w-3.5" /> Saldo
-        </div>
-        <p className="mt-2 text-4xl font-bold tracking-tight text-gradient">{fmt(totals.balance)}</p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Tile icon={ArrowUpRight} label="Entradas" value={fmt(totals.ins)} tone="success" />
-          <Tile icon={ArrowDownRight} label="Saídas" value={fmt(totals.outs)} tone="destructive" />
-        </div>
+      {/* Subtabs */}
+      <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+        {([
+          { id: "overview", label: "Visão Geral" },
+          { id: "income", label: "Entradas" },
+          { id: "expense", label: "Saídas" },
+          { id: "tithers", label: "Dizimistas" },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${
+              tab === t.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Range */}
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
         {RANGES.map((r) => (
           <button
             key={r.id}
@@ -169,64 +210,96 @@ function Finance() {
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="neu-card mt-4 p-4">
-        <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Evolução</p>
-        <div className="h-[240px]">
-          {isLoading ? (
-            <div className="grid h-full place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="oklch(1 0 0 / 6%)" vertical={false} />
-                <XAxis dataKey="label" stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
-                  labelStyle={{ color: "var(--muted-foreground)" }}
-                  formatter={(v: number) => fmt(v)}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="entradas" name="Entradas" radius={[6, 6, 0, 0]} fill="var(--success)" />
-                <Bar dataKey="saidas" name="Saídas" radius={[6, 6, 0, 0]} fill="var(--destructive)" />
-                <Line dataKey="saldo" name="Saldo" stroke="var(--primary)" strokeWidth={2.5} dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      {/* Insights */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Insight label="Maior entrada" value={fmt(insights.maxIn)} />
-        <Insight label="Maior gasto" value={fmt(insights.maxOut)} />
-        <Insight label="Melhor mês" value={insights.bestMonth} />
-        <Insight label="Saldo médio" value={fmt(insights.avgBalance)} />
-      </div>
-
-      {/* Movements */}
-      <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">Movimentações</h2>
-      <div className="space-y-2 pb-10">
-        {txs.length === 0 && (
-          <div className="neu-card p-5 text-center text-sm text-muted-foreground">
-            Nenhuma movimentação no período.
-          </div>
-        )}
-        {txs.slice(0, 50).map((t) => (
-          <div key={t.id} className="neu-card flex items-center gap-3 p-3.5">
-            <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
-              {t.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{t.category || (t.type === "income" ? "Entrada" : "Saída")}</p>
-              <p className="truncate text-xs text-muted-foreground">{t.description || new Date(t.occurred_at).toLocaleDateString("pt-BR")}</p>
+      {tab === "tithers" ? (
+        <TithersView txs={txs} stats={titheStats} isLoading={isLoading} />
+      ) : (
+        <>
+          <div className="neu-card mt-5 p-6">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+              <Wallet className="h-3.5 w-3.5" /> {tab === "income" ? "Total de entradas" : tab === "expense" ? "Total de saídas" : "Saldo"}
             </div>
-            <p className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
-              {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+            <p className="mt-2 text-4xl font-bold tracking-tight text-gradient">
+              {fmt(tab === "income" ? totals.ins : tab === "expense" ? totals.outs : totals.balance)}
             </p>
+            {tab === "overview" && (
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Tile icon={ArrowUpRight} label="Entradas" value={fmt(totals.ins)} tone="success" />
+                <Tile icon={ArrowDownRight} label="Saídas" value={fmt(totals.outs)} tone="destructive" />
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+
+          {tab === "overview" && (
+            <>
+              <div className="neu-card mt-4 p-4">
+                <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Evolução</p>
+                <div className="h-[240px]">
+                  {isLoading ? (
+                    <div className="grid h-full place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+                        <CartesianGrid stroke="oklch(1 0 0 / 6%)" vertical={false} />
+                        <XAxis dataKey="label" stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
+                          labelStyle={{ color: "var(--muted-foreground)" }}
+                          formatter={(v: number) => fmt(v)}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Bar dataKey="entradas" name="Entradas" radius={[6, 6, 0, 0]} fill="var(--success)" />
+                        <Bar dataKey="saidas" name="Saídas" radius={[6, 6, 0, 0]} fill="var(--destructive)" />
+                        <Line dataKey="saldo" name="Saldo" stroke="var(--primary)" strokeWidth={2.5} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Insight label="Maior entrada" value={fmt(insights.maxIn)} />
+                <Insight label="Maior gasto" value={fmt(insights.maxOut)} />
+                <Insight label="Melhor mês" value={insights.bestMonth} />
+                <Insight label="Saldo médio" value={fmt(insights.avgBalance)} />
+              </div>
+            </>
+          )}
+
+          <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">
+            {tab === "income" ? "Entradas" : tab === "expense" ? "Saídas" : "Movimentações"}
+          </h2>
+          <div className="space-y-2 pb-10">
+            {(() => {
+              const list = txs.filter((t) => tab === "overview" || t.type === tab);
+              if (!list.length) {
+                return (
+                  <div className="neu-card p-5 text-center text-sm text-muted-foreground">
+                    Nenhuma movimentação no período.
+                  </div>
+                );
+              }
+              return list.slice(0, 50).map((t) => (
+                <div key={t.id} className="neu-card flex items-center gap-3 p-3.5">
+                  <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                    {t.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {t.category || (t.type === "income" ? "Entrada" : "Saída")}
+                      {t.tither_name && <span className="text-muted-foreground"> · {t.tither_name}</span>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{t.description || new Date(t.occurred_at).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                  <p className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                    {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                  </p>
+                </div>
+              ));
+            })()}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -330,4 +403,136 @@ function buildInsights(txs: Tx[]) {
     : "—";
   const avgBalance = sorted.length ? sorted.reduce((a, b) => a + b[1], 0) / sorted.length : 0;
   return { maxIn, maxOut, bestMonth, avgBalance };
+}
+
+type TitheStats = {
+  total: number;
+  uniqueCount: number;
+  byPerson: { name: string; total: number; count: number; lastDate: string; churchId: string }[];
+  byChurch: { id: string; name: string; total: number }[];
+  monthlyGrowth: number;
+};
+
+function buildTitheStats(txs: Tx[], churches: { id: string; name: string }[]): TitheStats {
+  const tithes = txs.filter((t) => t.type === "income" && (t.category === "Dízimo" || !!t.tither_name));
+  const total = tithes.reduce((a, b) => a + b.amount, 0);
+  const personMap = new Map<string, { name: string; total: number; count: number; lastDate: string; churchId: string }>();
+  tithes.forEach((t) => {
+    const name = (t.tither_name || "").trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    const cur = personMap.get(key) ?? { name, total: 0, count: 0, lastDate: t.occurred_at, churchId: t.church_id };
+    cur.total += t.amount;
+    cur.count += 1;
+    if (t.occurred_at > cur.lastDate) cur.lastDate = t.occurred_at;
+    personMap.set(key, cur);
+  });
+  const byPerson = [...personMap.values()].sort((a, b) => b.total - a.total);
+
+  const churchMap = new Map<string, number>();
+  tithes.forEach((t) => churchMap.set(t.church_id, (churchMap.get(t.church_id) ?? 0) + t.amount));
+  const byChurch = [...churchMap.entries()]
+    .map(([id, total]) => ({ id, total, name: churches.find((c) => c.id === id)?.name ?? "Igreja" }))
+    .sort((a, b) => b.total - a.total);
+
+  // Monthly growth: this month vs previous month
+  const now = new Date();
+  const thisKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+  let cur = 0, last = 0;
+  tithes.forEach((t) => {
+    const k = t.occurred_at.slice(0, 7);
+    if (k === thisKey) cur += t.amount;
+    else if (k === prevKey) last += t.amount;
+  });
+  const monthlyGrowth = last === 0 ? (cur > 0 ? 100 : 0) : ((cur - last) / last) * 100;
+
+  return { total, uniqueCount: byPerson.length, byPerson, byChurch, monthlyGrowth };
+}
+
+function TithersView({ txs, stats, isLoading }: { txs: Tx[]; stats: TitheStats; isLoading: boolean }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const top = stats.byChurch[0];
+
+  if (isLoading) {
+    return <div className="mt-8 grid place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <Insight label="Total de dízimos" value={fmt(stats.total)} />
+        <Insight label="Dizimistas" value={String(stats.uniqueCount)} />
+        <Insight label="Maior arrecadação" value={top ? `${top.name}` : "—"} />
+        <Insight label="Crescimento (mês)" value={`${stats.monthlyGrowth >= 0 ? "+" : ""}${stats.monthlyGrowth.toFixed(0)}%`} />
+      </div>
+
+      <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">Dizimistas</h2>
+      <div className="space-y-2 pb-10">
+        {stats.byPerson.length === 0 && (
+          <div className="neu-card p-5 text-center text-sm text-muted-foreground">
+            Nenhum dízimo registrado no período. Use o botão ➕ → Financeiro → Entrada → Dízimo.
+          </div>
+        )}
+        {stats.byPerson.map((p) => (
+          <button
+            key={p.name}
+            onClick={() => setOpenId(openId === p.name ? null : p.name)}
+            className="neu-card flex w-full items-center gap-3 p-4 text-left"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary text-sm font-semibold">
+              {p.name.slice(0, 1).toUpperCase()}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-semibold">{p.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {p.count}× · última {new Date(p.lastDate).toLocaleDateString("pt-BR")}
+              </p>
+            </div>
+            <p className="text-sm font-semibold text-success">{fmt(p.total)}</p>
+          </button>
+        ))}
+      </div>
+
+      {openId && (() => {
+        const p = stats.byPerson.find((x) => x.name === openId);
+        if (!p) return null;
+        const history = txs.filter((t) => (t.tither_name ?? "").toLowerCase() === openId.toLowerCase());
+        return (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+            onClick={() => setOpenId(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border bg-surface p-5"
+            >
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Dizimista</p>
+              <h3 className="text-xl font-bold">{p.name}</h3>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Insight label="Total contribuído" value={fmt(p.total)} />
+                <Insight label="Contribuições" value={String(p.count)} />
+              </div>
+              <p className="mt-4 mb-2 text-xs uppercase tracking-wider text-muted-foreground">Histórico</p>
+              <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                {history.map((h) => (
+                  <div key={h.id} className="flex items-center justify-between rounded-xl bg-surface-elevated px-3 py-2 text-sm">
+                    <span className="text-muted-foreground">{new Date(h.occurred_at).toLocaleDateString("pt-BR")}</span>
+                    <span className="font-semibold text-success">{fmt(h.amount)}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setOpenId(null)}
+                className="mt-5 w-full rounded-full border border-border py-2.5 text-sm font-medium hover:bg-surface-elevated"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
 }
