@@ -24,7 +24,7 @@ export function QuickAddModal({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="max-w-md border-border bg-surface p-0 sm:rounded-3xl">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-border bg-surface p-0 sm:rounded-3xl">
         <DialogHeader className="border-b border-border/60 p-5">
           <div className="flex items-center gap-3">
             {step.kind !== "root" && (
@@ -211,6 +211,30 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
   );
 }
 
+const INCOME_CATEGORIES = [
+  "Dízimo",
+  "Oferta",
+  "Oferta Especial",
+  "Campanha",
+  "Doação",
+  "Evento",
+  "Projeto",
+];
+const EXPENSE_CATEGORIES = [
+  "Água",
+  "Energia",
+  "Internet",
+  "Aluguel",
+  "Combustível",
+  "Equipamentos",
+  "Obras",
+  "Evangelismo",
+  "Eventos",
+  "Ajuda de custo",
+  "Gás",
+  "Outros",
+];
+
 function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () => void }) {
   const { user } = useAuth();
   const { data: churches } = useChurches();
@@ -221,16 +245,19 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
   const [churchId, setChurchId] = useState(() => churches?.[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
 
+  const categories = txType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!category) return toast.error("Escolha uma categoria");
     setBusy(true);
     const { error } = await supabase.from("transactions").insert({
       owner_id: user.id,
       church_id: churchId,
       type: txType,
       amount: Number(amount.replace(",", ".")),
-      category: category || null,
+      category,
       description: description || null,
     });
     setBusy(false);
@@ -240,27 +267,56 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
     onDone();
   };
 
+  // Step 1: pick category
+  if (!category) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          {txType === "income" ? "Qual tipo de entrada?" : "Qual tipo de despesa?"}
+        </p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(c)}
+              className={`neu-card flex min-h-[60px] items-center justify-center break-words p-3 text-center text-sm font-medium transition-transform hover:-translate-y-0.5 ${
+                txType === "income" ? "hover:text-success" : "hover:text-destructive"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: amount + optional note
   return (
     <form onSubmit={submit} className="space-y-4">
+      <div className="flex items-center justify-between rounded-xl bg-surface-elevated px-3 py-2">
+        <span className="text-xs text-muted-foreground">Categoria</span>
+        <button
+          type="button"
+          onClick={() => setCategory("")}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          {category} ✎
+        </button>
+      </div>
       <FormField label="Valor (R$)">
         <input
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           required
+          autoFocus
           placeholder="0,00"
           className="input text-2xl font-semibold"
         />
       </FormField>
-      <FormField label="Categoria">
-        <input
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          placeholder={txType === "income" ? "Dízimo, oferta…" : "Energia, materiais…"}
-          className="input"
-        />
-      </FormField>
-      <FormField label="Descrição (opcional)">
+      <FormField label="Observação (opcional)">
         <input value={description} onChange={(e) => setDescription(e.target.value)} className="input" />
       </FormField>
       <ChurchSelect value={churchId} onChange={setChurchId} />
