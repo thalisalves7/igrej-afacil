@@ -79,7 +79,35 @@ function AuthPage() {
           </p>
         </div>
 
-        <form onSubmit={submit} className="neu-card mt-8 space-y-4 p-6">
+        <div className="mt-8 space-y-3">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const result = await lovable.auth.signInWithOAuth("google", {
+                  redirect_uri: `${window.location.origin}/app`,
+                });
+                if (result.error) throw new Error(result.error.message ?? "Falha ao entrar com Google");
+                if (result.redirected) return;
+                navigate({ to: "/app" });
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Não foi possível entrar com Google");
+              }
+            }}
+            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-full border border-border bg-surface text-sm font-semibold transition-colors hover:bg-surface-elevated"
+          >
+            <GoogleIcon />
+            Continuar com Google
+          </button>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">ou com email</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </div>
+
+        <form onSubmit={submit} className="neu-card mt-4 space-y-4 p-6">
           {mode === "signup" && (
             <Field label="Nome">
               <input
