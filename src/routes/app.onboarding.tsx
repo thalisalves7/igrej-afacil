@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/use-auth";
-import { useInvalidateAll } from "@/lib/data";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Loader2, Building2 } from "lucide-react";
 import { toast } from "sonner";
