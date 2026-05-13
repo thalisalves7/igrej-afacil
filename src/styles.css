@@ -36,6 +36,9 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-info: var(--info);
+  --color-warning: var(--warning);
+  --color-wine: var(--wine);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
