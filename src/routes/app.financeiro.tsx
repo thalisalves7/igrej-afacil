@@ -300,6 +300,7 @@ function Finance() {
           </div>
         </>
       )}
+    </div>
   );
 }
 
