@@ -104,6 +104,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          ministerial_role: string | null
           name: string
           notes: string | null
           owner_id: string
@@ -117,6 +118,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          ministerial_role?: string | null
           name: string
           notes?: string | null
           owner_id: string
@@ -130,6 +132,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          ministerial_role?: string | null
           name?: string
           notes?: string | null
           owner_id?: string
@@ -187,6 +190,8 @@ export type Database = {
           id: string
           occurred_at: string
           owner_id: string
+          tither_member_id: string | null
+          tither_name: string | null
           type: Database["public"]["Enums"]["tx_type"]
           updated_at: string
         }
@@ -199,6 +204,8 @@ export type Database = {
           id?: string
           occurred_at?: string
           owner_id: string
+          tither_member_id?: string | null
+          tither_name?: string | null
           type: Database["public"]["Enums"]["tx_type"]
           updated_at?: string
         }
@@ -211,6 +218,8 @@ export type Database = {
           id?: string
           occurred_at?: string
           owner_id?: string
+          tither_member_id?: string | null
+          tither_name?: string | null
           type?: Database["public"]["Enums"]["tx_type"]
           updated_at?: string
         }
@@ -220,6 +229,13 @@ export type Database = {
             columns: ["church_id"]
             isOneToOne: false
             referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_tither_member_id_fkey"
+            columns: ["tither_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
