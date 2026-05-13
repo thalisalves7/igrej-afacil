@@ -404,3 +404,135 @@ function buildInsights(txs: Tx[]) {
   const avgBalance = sorted.length ? sorted.reduce((a, b) => a + b[1], 0) / sorted.length : 0;
   return { maxIn, maxOut, bestMonth, avgBalance };
 }
+
+type TitheStats = {
+  total: number;
+  uniqueCount: number;
+  byPerson: { name: string; total: number; count: number; lastDate: string; churchId: string }[];
+  byChurch: { id: string; name: string; total: number }[];
+  monthlyGrowth: number;
+};
+
+function buildTitheStats(txs: Tx[], churches: { id: string; name: string }[]): TitheStats {
+  const tithes = txs.filter((t) => t.type === "income" && (t.category === "Dízimo" || !!t.tither_name));
+  const total = tithes.reduce((a, b) => a + b.amount, 0);
+  const personMap = new Map<string, { name: string; total: number; count: number; lastDate: string; churchId: string }>();
+  tithes.forEach((t) => {
+    const name = (t.tither_name || "").trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    const cur = personMap.get(key) ?? { name, total: 0, count: 0, lastDate: t.occurred_at, churchId: t.church_id };
+    cur.total += t.amount;
+    cur.count += 1;
+    if (t.occurred_at > cur.lastDate) cur.lastDate = t.occurred_at;
+    personMap.set(key, cur);
+  });
+  const byPerson = [...personMap.values()].sort((a, b) => b.total - a.total);
+
+  const churchMap = new Map<string, number>();
+  tithes.forEach((t) => churchMap.set(t.church_id, (churchMap.get(t.church_id) ?? 0) + t.amount));
+  const byChurch = [...churchMap.entries()]
+    .map(([id, total]) => ({ id, total, name: churches.find((c) => c.id === id)?.name ?? "Igreja" }))
+    .sort((a, b) => b.total - a.total);
+
+  // Monthly growth: this month vs previous month
+  const now = new Date();
+  const thisKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+  let cur = 0, last = 0;
+  tithes.forEach((t) => {
+    const k = t.occurred_at.slice(0, 7);
+    if (k === thisKey) cur += t.amount;
+    else if (k === prevKey) last += t.amount;
+  });
+  const monthlyGrowth = last === 0 ? (cur > 0 ? 100 : 0) : ((cur - last) / last) * 100;
+
+  return { total, uniqueCount: byPerson.length, byPerson, byChurch, monthlyGrowth };
+}
+
+function TithersView({ txs, stats, isLoading }: { txs: Tx[]; stats: TitheStats; isLoading: boolean }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const top = stats.byChurch[0];
+
+  if (isLoading) {
+    return <div className="mt-8 grid place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <Insight label="Total de dízimos" value={fmt(stats.total)} />
+        <Insight label="Dizimistas" value={String(stats.uniqueCount)} />
+        <Insight label="Maior arrecadação" value={top ? `${top.name}` : "—"} />
+        <Insight label="Crescimento (mês)" value={`${stats.monthlyGrowth >= 0 ? "+" : ""}${stats.monthlyGrowth.toFixed(0)}%`} />
+      </div>
+
+      <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">Dizimistas</h2>
+      <div className="space-y-2 pb-10">
+        {stats.byPerson.length === 0 && (
+          <div className="neu-card p-5 text-center text-sm text-muted-foreground">
+            Nenhum dízimo registrado no período. Use o botão ➕ → Financeiro → Entrada → Dízimo.
+          </div>
+        )}
+        {stats.byPerson.map((p) => (
+          <button
+            key={p.name}
+            onClick={() => setOpenId(openId === p.name ? null : p.name)}
+            className="neu-card flex w-full items-center gap-3 p-4 text-left"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary text-sm font-semibold">
+              {p.name.slice(0, 1).toUpperCase()}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-semibold">{p.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {p.count}× · última {new Date(p.lastDate).toLocaleDateString("pt-BR")}
+              </p>
+            </div>
+            <p className="text-sm font-semibold text-success">{fmt(p.total)}</p>
+          </button>
+        ))}
+      </div>
+
+      {openId && (() => {
+        const p = stats.byPerson.find((x) => x.name === openId);
+        if (!p) return null;
+        const history = txs.filter((t) => (t.tither_name ?? "").toLowerCase() === openId.toLowerCase());
+        return (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+            onClick={() => setOpenId(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border border-border bg-surface p-5"
+            >
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Dizimista</p>
+              <h3 className="text-xl font-bold">{p.name}</h3>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Insight label="Total contribuído" value={fmt(p.total)} />
+                <Insight label="Contribuições" value={String(p.count)} />
+              </div>
+              <p className="mt-4 mb-2 text-xs uppercase tracking-wider text-muted-foreground">Histórico</p>
+              <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                {history.map((h) => (
+                  <div key={h.id} className="flex items-center justify-between rounded-xl bg-surface-elevated px-3 py-2 text-sm">
+                    <span className="text-muted-foreground">{new Date(h.occurred_at).toLocaleDateString("pt-BR")}</span>
+                    <span className="font-semibold text-success">{fmt(h.amount)}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setOpenId(null)}
+                className="mt-5 w-full rounded-full border border-border py-2.5 text-sm font-medium hover:bg-surface-elevated"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
+}
