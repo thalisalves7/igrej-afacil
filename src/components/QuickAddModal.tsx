@@ -177,11 +177,13 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [churchId, setChurchId] = useState(() => churches?.[0]?.id ?? "");
+  const [role, setRole] = useState<string>(memberType === "visitor" ? "Visitante" : "");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (memberType === "member" && !role) return toast.error("Escolha o cargo ministerial");
     setBusy(true);
     const { error } = await supabase.from("members").insert({
       owner_id: user.id,
@@ -189,7 +191,8 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
       type: memberType,
       name,
       phone: phone || null,
-    });
+      ministerial_role: role || null,
+    } as any);
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(memberType === "member" ? "Membro adicionado!" : "Visitante registrado!");
@@ -206,6 +209,29 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
         <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
       </FormField>
       <ChurchSelect value={churchId} onChange={setChurchId} />
+      {memberType === "member" && (
+        <FormField label="Cargo ministerial">
+          <div className="grid grid-cols-2 gap-2">
+            {MINISTERIAL_ROLES.filter((r) => r !== "Visitante").map((r) => {
+              const t = roleTone(r);
+              const active = role === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm transition-all ${
+                    active ? `${t.badge} ring-2 ring-offset-0` : "border-border bg-surface/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span className="text-base leading-none">{t.emoji}</span>
+                  <span className="truncate">{r}</span>
+                </button>
+              );
+            })}
+          </div>
+        </FormField>
+      )}
       <SubmitBtn busy={busy} label="Salvar" />
     </form>
   );
