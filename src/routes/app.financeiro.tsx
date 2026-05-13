@@ -78,13 +78,17 @@ function Finance() {
   })();
 
   const sendWhatsapp = () => {
+    const topChurch = titheStats.byChurch[0];
     const text =
       `📊 *Resumo Financeiro — ${churchLabel}*\n` +
       `🗓 Últimos ${days} dias\n\n` +
       `💰 Entradas: ${fmt(totals.ins)}\n` +
       `📤 Saídas: ${fmt(totals.outs)}\n` +
       `✅ Saldo: ${fmt(totals.balance)}\n\n` +
-      `_Relatório gerado pelo Igreja Fácil_`;
+      `📌 Total de Dízimos: ${fmt(titheStats.total)}\n` +
+      `📌 Dizimistas: ${titheStats.uniqueCount}\n` +
+      (topChurch ? `📌 Igreja com maior arrecadação: ${topChurch.name} (${fmt(topChurch.total)})\n` : "") +
+      `\n_Relatório gerado pelo Igreja Fácil_`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -111,13 +115,36 @@ function Finance() {
       txs.slice(0, 35).forEach((t) => {
         const sign = t.type === "income" ? "+" : "-";
         doc.text(
-          `${t.occurred_at}   ${sign} ${fmt(t.amount)}   ${(t.category ?? "")}  ${(t.description ?? "")}`.slice(0, 95),
+          `${t.occurred_at}   ${sign} ${fmt(t.amount)}   ${(t.category ?? "")}  ${(t.tither_name ?? t.description ?? "")}`.slice(0, 95),
           14,
           y,
         );
         y += 6;
         if (y > 280) { doc.addPage(); y = 20; }
       });
+
+      // Dizimistas
+      if (titheStats.byPerson.length) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        y += 6;
+        doc.setFontSize(12);
+        doc.text(`Dizimistas — ${fmt(titheStats.total)} (${titheStats.uniqueCount})`, 14, y);
+        y += 8;
+        doc.setFontSize(10);
+        titheStats.byChurch.forEach((c) => {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.setTextColor(120);
+          doc.text(`${c.name}: ${fmt(c.total)}`, 14, y);
+          doc.setTextColor(0);
+          y += 6;
+        });
+        y += 2;
+        titheStats.byPerson.slice(0, 40).forEach((p) => {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.text(`${p.name.slice(0, 40).padEnd(40)} ${fmt(p.total)}`, 14, y);
+          y += 6;
+        });
+      }
 
       doc.setFontSize(9);
       doc.setTextColor(140);
