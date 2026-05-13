@@ -279,7 +279,7 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
   const isTithe = category === "Dízimo";
 
   // Lookup members for autocomplete (only when needed)
-  const { data: memberOptions = [] } = useQuery({
+  const { data: memberOptions = [] } = useQuery<{ id: string; name: string; church_id: string }[]>({
     queryKey: ["members-lookup", user?.id, churchId],
     enabled: !!user && isTithe,
     queryFn: async () => {
@@ -287,7 +287,7 @@ function TxForm({ txType, onDone }: { txType: "income" | "expense"; onDone: () =
       if (churchId) q = q.eq("church_id", churchId);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as { id: string; name: string; church_id: string }[];
     },
   });
 
