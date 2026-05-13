@@ -32,7 +32,11 @@ type Tx = {
   description: string | null;
   occurred_at: string;
   church_id: string;
+  tither_name: string | null;
+  tither_member_id: string | null;
 };
+
+type SubTab = "overview" | "income" | "expense" | "tithers";
 
 function Finance() {
   const { user } = useAuth();
