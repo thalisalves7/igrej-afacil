@@ -24,7 +24,7 @@ export function QuickAddModal({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="max-w-md border-border bg-surface p-0 sm:rounded-3xl">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-border bg-surface p-0 sm:rounded-3xl">
         <DialogHeader className="border-b border-border/60 p-5">
           <div className="flex items-center gap-3">
             {step.kind !== "root" && (
