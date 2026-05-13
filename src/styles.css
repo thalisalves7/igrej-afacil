@@ -76,6 +76,11 @@
   --success: oklch(0.72 0.16 155);
   --success-foreground: oklch(0.16 0.012 260);
 
+  /* Ministerial role tokens (apenas visual — não significam permissões) */
+  --info: oklch(0.72 0.15 245);
+  --warning: oklch(0.78 0.16 70);
+  --wine: oklch(0.55 0.16 15);
+
   --border: oklch(0.30 0.013 260 / 50%);
   --input: oklch(0.30 0.013 260 / 60%);
 
