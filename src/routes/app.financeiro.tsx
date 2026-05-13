@@ -68,6 +68,7 @@ function Finance() {
 
   const chartData = useMemo(() => buildSeries(txs, days), [txs, days]);
   const insights = useMemo(() => buildInsights(txs), [txs]);
+  const titheStats = useMemo(() => buildTitheStats(txs, churches ?? []), [txs, churches]);
 
   const churchLabel = (() => {
     if (filter === "all") return "Todas as igrejas";
