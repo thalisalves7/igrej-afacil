@@ -175,20 +175,28 @@ function Finance() {
         </button>
       </div>
 
-      {/* Hero balance */}
-      <div className="neu-card mt-5 p-6">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-          <Wallet className="h-3.5 w-3.5" /> Saldo
-        </div>
-        <p className="mt-2 text-4xl font-bold tracking-tight text-gradient">{fmt(totals.balance)}</p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Tile icon={ArrowUpRight} label="Entradas" value={fmt(totals.ins)} tone="success" />
-          <Tile icon={ArrowDownRight} label="Saídas" value={fmt(totals.outs)} tone="destructive" />
-        </div>
+      {/* Subtabs */}
+      <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+        {([
+          { id: "overview", label: "Visão Geral" },
+          { id: "income", label: "Entradas" },
+          { id: "expense", label: "Saídas" },
+          { id: "tithers", label: "Dizimistas" },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${
+              tab === t.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Range */}
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
         {RANGES.map((r) => (
           <button
             key={r.id}
@@ -202,65 +210,96 @@ function Finance() {
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="neu-card mt-4 p-4">
-        <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Evolução</p>
-        <div className="h-[240px]">
-          {isLoading ? (
-            <div className="grid h-full place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="oklch(1 0 0 / 6%)" vertical={false} />
-                <XAxis dataKey="label" stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
-                  labelStyle={{ color: "var(--muted-foreground)" }}
-                  formatter={(v: number) => fmt(v)}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="entradas" name="Entradas" radius={[6, 6, 0, 0]} fill="var(--success)" />
-                <Bar dataKey="saidas" name="Saídas" radius={[6, 6, 0, 0]} fill="var(--destructive)" />
-                <Line dataKey="saldo" name="Saldo" stroke="var(--primary)" strokeWidth={2.5} dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      {/* Insights */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Insight label="Maior entrada" value={fmt(insights.maxIn)} />
-        <Insight label="Maior gasto" value={fmt(insights.maxOut)} />
-        <Insight label="Melhor mês" value={insights.bestMonth} />
-        <Insight label="Saldo médio" value={fmt(insights.avgBalance)} />
-      </div>
-
-      {/* Movements */}
-      <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">Movimentações</h2>
-      <div className="space-y-2 pb-10">
-        {txs.length === 0 && (
-          <div className="neu-card p-5 text-center text-sm text-muted-foreground">
-            Nenhuma movimentação no período.
-          </div>
-        )}
-        {txs.slice(0, 50).map((t) => (
-          <div key={t.id} className="neu-card flex items-center gap-3 p-3.5">
-            <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
-              {t.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{t.category || (t.type === "income" ? "Entrada" : "Saída")}</p>
-              <p className="truncate text-xs text-muted-foreground">{t.description || new Date(t.occurred_at).toLocaleDateString("pt-BR")}</p>
+      {tab === "tithers" ? (
+        <TithersView txs={txs} stats={titheStats} isLoading={isLoading} />
+      ) : (
+        <>
+          <div className="neu-card mt-5 p-6">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+              <Wallet className="h-3.5 w-3.5" /> {tab === "income" ? "Total de entradas" : tab === "expense" ? "Total de saídas" : "Saldo"}
             </div>
-            <p className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
-              {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+            <p className="mt-2 text-4xl font-bold tracking-tight text-gradient">
+              {fmt(tab === "income" ? totals.ins : tab === "expense" ? totals.outs : totals.balance)}
             </p>
+            {tab === "overview" && (
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Tile icon={ArrowUpRight} label="Entradas" value={fmt(totals.ins)} tone="success" />
+                <Tile icon={ArrowDownRight} label="Saídas" value={fmt(totals.outs)} tone="destructive" />
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-    </div>
+
+          {tab === "overview" && (
+            <>
+              <div className="neu-card mt-4 p-4">
+                <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Evolução</p>
+                <div className="h-[240px]">
+                  {isLoading ? (
+                    <div className="grid h-full place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+                        <CartesianGrid stroke="oklch(1 0 0 / 6%)" vertical={false} />
+                        <XAxis dataKey="label" stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
+                          labelStyle={{ color: "var(--muted-foreground)" }}
+                          formatter={(v: number) => fmt(v)}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Bar dataKey="entradas" name="Entradas" radius={[6, 6, 0, 0]} fill="var(--success)" />
+                        <Bar dataKey="saidas" name="Saídas" radius={[6, 6, 0, 0]} fill="var(--destructive)" />
+                        <Line dataKey="saldo" name="Saldo" stroke="var(--primary)" strokeWidth={2.5} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Insight label="Maior entrada" value={fmt(insights.maxIn)} />
+                <Insight label="Maior gasto" value={fmt(insights.maxOut)} />
+                <Insight label="Melhor mês" value={insights.bestMonth} />
+                <Insight label="Saldo médio" value={fmt(insights.avgBalance)} />
+              </div>
+            </>
+          )}
+
+          <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">
+            {tab === "income" ? "Entradas" : tab === "expense" ? "Saídas" : "Movimentações"}
+          </h2>
+          <div className="space-y-2 pb-10">
+            {(() => {
+              const list = txs.filter((t) => tab === "overview" || t.type === tab);
+              if (!list.length) {
+                return (
+                  <div className="neu-card p-5 text-center text-sm text-muted-foreground">
+                    Nenhuma movimentação no período.
+                  </div>
+                );
+              }
+              return list.slice(0, 50).map((t) => (
+                <div key={t.id} className="neu-card flex items-center gap-3 p-3.5">
+                  <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                    {t.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {t.category || (t.type === "income" ? "Entrada" : "Saída")}
+                      {t.tither_name && <span className="text-muted-foreground"> · {t.tither_name}</span>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{t.description || new Date(t.occurred_at).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                  <p className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                    {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                  </p>
+                </div>
+              ));
+            })()}
+          </div>
+        </>
+      )}
   );
 }
 
