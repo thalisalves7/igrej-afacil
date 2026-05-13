@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Wallet, Calendar, ArrowLeft, Loader2, TrendingUp, TrendingDown, UserPlus, UserCheck } from "lucide-react";
+import { MINISTERIAL_ROLES, roleTone } from "@/lib/ministerial-roles";
 
 type Step =
   | { kind: "root" }
