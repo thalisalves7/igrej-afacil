@@ -2,11 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches, useInvalidateAll } from "@/lib/data";
 import { THEMES, useTheme } from "@/lib/theme";
-import { Building2, LogOut, Plus, Sparkles, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Building2, LogOut, Plus, Sparkles, Trash2, Loader2, Volume2, Vibrate } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { feedback, getPref, setPref } from "@/lib/feedback";
 
 export const Route = createFileRoute("/app/perfil")({
   component: Profile,
