@@ -213,7 +213,7 @@ function Finance() {
       </div>
 
       {tab === "tithers" ? (
-        <TithersView txs={txs} stats={titheStats} isLoading={isLoading} />
+        <TithersView churches={churches ?? []} churchLabel={churchLabel} />
       ) : (
         <>
           <div className="neu-card mt-5 p-6">
