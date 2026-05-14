@@ -58,6 +58,8 @@ function Profile() {
         </div>
       </Section>
 
+      <FeedbackSettings />
+
       {/* Churches */}
       <Section
         title="Suas igrejas"
