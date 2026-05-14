@@ -2,11 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches, useInvalidateAll } from "@/lib/data";
 import { THEMES, useTheme } from "@/lib/theme";
-import { Building2, LogOut, Plus, Sparkles, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Building2, LogOut, Plus, Sparkles, Trash2, Loader2, Volume2, Vibrate } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { feedback, getPref, setPref } from "@/lib/feedback";
 
 export const Route = createFileRoute("/app/perfil")({
   component: Profile,
@@ -56,6 +57,8 @@ function Profile() {
           ))}
         </div>
       </Section>
+
+      <FeedbackSettings />
 
       {/* Churches */}
       <Section
@@ -109,6 +112,41 @@ function Section({ title, children, action }: { title: string; children: React.R
       </div>
       {children}
     </section>
+  );
+}
+
+function FeedbackSettings() {
+  const [sound, setSound] = useState(true);
+  const [haptic, setHaptic] = useState(true);
+  useEffect(() => { setSound(getPref("sound")); setHaptic(getPref("haptic")); }, []);
+  const toggle = (k: "sound" | "haptic", v: boolean) => {
+    setPref(k, v);
+    if (k === "sound") setSound(v); else setHaptic(v);
+    if (v) feedback("switch");
+  };
+  return (
+    <section className="mt-6">
+      <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Sons & Vibração</h2>
+      <div className="space-y-2">
+        <Toggle icon={Volume2} label="Sons sutis" desc="Confirmações elegantes ao salvar." on={sound} onChange={(v) => toggle("sound", v)} />
+        <Toggle icon={Vibrate} label="Vibração" desc="Micro toque tátil em ações." on={haptic} onChange={(v) => toggle("haptic", v)} />
+      </div>
+    </section>
+  );
+}
+
+function Toggle({ icon: Icon, label, desc, on, onChange }: { icon: typeof Volume2; label: string; desc: string; on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button onClick={() => onChange(!on)} className="neu-card flex w-full items-center gap-3 p-4 text-left active:scale-[0.99] transition-transform">
+      <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary"><Icon className="h-4 w-4" /></span>
+      <div className="flex-1">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs text-muted-foreground">{desc}</p>
+      </div>
+      <span className={`relative h-6 w-11 rounded-full transition-colors ${on ? "bg-primary" : "bg-muted"}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform ${on ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+      </span>
+    </button>
   );
 }
 

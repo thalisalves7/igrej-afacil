@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches, useActiveChurch } from "@/lib/data";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { Bell, TrendingUp, TrendingDown, Wallet, Users, Cake, AlertTriangle, Calendar } from "lucide-react";
+import { Bell, TrendingUp, TrendingDown, Wallet, Users, Cake, AlertTriangle, Calendar, UserPlus, ChevronRight } from "lucide-react";
 import { ChurchFilter } from "@/components/ChurchFilter";
+import { feedback } from "@/lib/feedback";
 
 export const Route = createFileRoute("/app/")({
   component: Dashboard,
@@ -67,7 +68,7 @@ function Dashboard() {
           <p className="mt-1 text-xs text-muted-foreground">{churchName}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface/60 text-muted-foreground hover:text-foreground">
+          <button onClick={() => feedback("tap")} className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface/60 text-muted-foreground hover:text-foreground active:scale-95 transition-transform">
             <Bell className="h-4 w-4" />
           </button>
           <ThemeSwitcher />
@@ -76,29 +77,44 @@ function Dashboard() {
 
       <ChurchFilter />
 
-      {/* Balance hero */}
-      <div className="neu-card mt-5 p-6">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Saldo atual</p>
+      {/* Balance hero — clicável */}
+      <Link
+        to="/app/financeiro"
+        onClick={() => feedback("tap")}
+        className="neu-card mt-5 block p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)] active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Saldo atual</p>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
         <p className="mt-2 text-4xl font-bold tracking-tight text-gradient">{fmt(summary?.balance ?? 0)}</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Mini icon={TrendingUp} label="Entradas hoje" value={fmt(summary?.todayIns ?? 0)} tone="success" />
           <Mini icon={TrendingDown} label="Saídas hoje" value={fmt(summary?.todayOuts ?? 0)} tone="destructive" />
         </div>
-      </div>
+      </Link>
 
-      {/* Cards */}
+      {/* Cards clicáveis */}
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <StatCard icon={Users} label="Membros" value={String(summary?.totalMembers ?? 0)} />
-        <StatCard icon={Users} label="Visitantes (semana)" value={String(summary?.weekVisitors ?? 0)} />
+        <ClickStat to="/app/membros" icon={Users} label="Membros" value={String(summary?.totalMembers ?? 0)} />
+        <ClickStat to="/app/membros" icon={UserPlus} label="Visitantes (semana)" value={String(summary?.weekVisitors ?? 0)} />
       </div>
 
       {/* Quick links */}
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <Link to="/app/financeiro" className="neu-card flex items-center gap-3 p-4 hover:-translate-y-0.5 transition-transform">
+        <Link
+          to="/app/financeiro"
+          onClick={() => feedback("tap")}
+          className="neu-card flex items-center gap-3 p-4 hover:-translate-y-0.5 active:scale-[0.98] transition-transform"
+        >
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary"><Wallet className="h-5 w-5" /></span>
           <div><p className="text-sm font-semibold">Financeiro</p><p className="text-xs text-muted-foreground">Gráficos e relatórios</p></div>
         </Link>
-        <Link to="/app/agenda" className="neu-card flex items-center gap-3 p-4 hover:-translate-y-0.5 transition-transform">
+        <Link
+          to="/app/agenda"
+          onClick={() => feedback("tap")}
+          className="neu-card flex items-center gap-3 p-4 hover:-translate-y-0.5 active:scale-[0.98] transition-transform"
+        >
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary"><Calendar className="h-5 w-5" /></span>
           <div><p className="text-sm font-semibold">Agenda</p><p className="text-xs text-muted-foreground">Próximos eventos</p></div>
         </Link>
@@ -108,10 +124,10 @@ function Dashboard() {
       <h2 className="mt-8 mb-3 text-sm font-semibold text-muted-foreground">Alertas</h2>
       <div className="space-y-3">
         {summary?.birthdays ? (
-          <Alert icon={Cake} title={`${summary.birthdays} aniversariante${summary.birthdays > 1 ? "s" : ""} hoje`} desc="Mande uma mensagem carinhosa." tone="primary" />
+          <Alert icon={Cake} title={`${summary.birthdays} aniversariante${summary.birthdays > 1 ? "s" : ""} hoje`} desc="Mande uma mensagem carinhosa." />
         ) : null}
         {summary?.nextEvent ? (
-          <Alert icon={Calendar} title={summary.nextEvent.title} desc={new Date(summary.nextEvent.starts_at).toLocaleString("pt-BR")} tone="primary" />
+          <Alert icon={Calendar} title={summary.nextEvent.title} desc={new Date(summary.nextEvent.starts_at).toLocaleString("pt-BR")} />
         ) : null}
         {!summary?.birthdays && !summary?.nextEvent && (
           <div className="neu-card flex items-center gap-3 p-4 text-sm text-muted-foreground">
@@ -135,18 +151,25 @@ function Mini({ icon: Icon, label, value, tone }: { icon: typeof TrendingUp; lab
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
+function ClickStat({ to, icon: Icon, label, value }: { to: string; icon: typeof Users; label: string; value: string }) {
   return (
-    <div className="neu-card p-4">
-      <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" /> {label}
+    <Link
+      to={to}
+      onClick={() => feedback("tap")}
+      className="neu-card group block p-4 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)] active:scale-[0.98]"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </span>
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
       <p className="text-2xl font-bold">{value}</p>
-    </div>
+    </Link>
   );
 }
 
-function Alert({ icon: Icon, title, desc }: { icon: typeof Cake; title: string; desc: string; tone?: string }) {
+function Alert({ icon: Icon, title, desc }: { icon: typeof Cake; title: string; desc: string }) {
   return (
     <div className="neu-card flex items-start gap-3 p-4">
       <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">

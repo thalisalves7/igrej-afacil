@@ -2,41 +2,55 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
-import { useChurches, useActiveChurch } from "@/lib/data";
+import { useChurches, useActiveChurch, useInvalidateAll } from "@/lib/data";
 import { ChurchFilter } from "@/components/ChurchFilter";
 import { scopedChurchIds } from "./app.index";
-import { useState, useMemo } from "react";
-import { Phone, Cake, Search } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Phone, Cake, Search, Upload, CheckSquare, Square, X, Loader2, Trash2, ArrowRightLeft, Pencil } from "lucide-react";
 import { MINISTERIAL_ROLES, roleTone } from "@/lib/ministerial-roles";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { feedback } from "@/lib/feedback";
 
 export const Route = createFileRoute("/app/membros")({
   component: Members,
 });
 
+type Member = {
+  id: string; name: string; phone: string | null; email: string | null;
+  birthday: string | null; type: "member" | "visitor"; church_id: string;
+  ministerial_role: string | null; notes: string | null;
+};
+
 function Members() {
   const { user } = useAuth();
-  const { data: churches } = useChurches();
+  const { data: churches = [] } = useChurches();
   const { value: filter } = useActiveChurch();
+  const invalidate = useInvalidateAll();
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [openMember, setOpenMember] = useState<Member | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: members = [] } = useQuery({
     queryKey: ["members", user?.id, filter],
     enabled: !!user,
-    queryFn: async () => {
-      const ids = scopedChurchIds(churches ?? [], filter);
+    queryFn: async (): Promise<Member[]> => {
+      const ids = scopedChurchIds(churches, filter);
       let qb = supabase.from("members").select("*").order("created_at", { ascending: false });
       if (ids) qb = qb.in("church_id", ids);
       const { data, error } = await qb;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Member[];
     },
   });
 
   const roleCounts = useMemo(() => {
     const c: Record<string, number> = {};
     members.forEach((m) => {
-      const r = (m as any).ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+      const r = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
       c[r] = (c[r] ?? 0) + 1;
     });
     return c;
@@ -45,7 +59,7 @@ function Members() {
   const filtered = useMemo(
     () =>
       members.filter((m) => {
-        const r = (m as any).ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+        const r = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
         const okRole = roleFilter === "all" || r === roleFilter;
         const okQ = !q || m.name.toLowerCase().includes(q.toLowerCase());
         return okRole && okQ;
@@ -56,17 +70,44 @@ function Members() {
   const tabs = [
     { id: "all", label: "Todos", count: members.length },
     ...MINISTERIAL_ROLES.filter((r) => roleCounts[r]).map((r) => ({
-      id: r,
-      label: r,
-      count: roleCounts[r] ?? 0,
+      id: r, label: r, count: roleCounts[r] ?? 0,
     })),
   ];
 
+  const toggleSelect = (id: string) => {
+    feedback("tap");
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const exitBulk = () => { setBulkMode(false); setSelected(new Set()); };
+
   return (
     <div className="mx-auto max-w-2xl px-5 pt-8">
-      <header className="mb-5">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Pessoas</p>
-        <h1 className="text-2xl font-bold">Membros</h1>
+      <header className="mb-5 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Pessoas</p>
+          <h1 className="text-2xl font-bold">Membros</h1>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { feedback("tap"); setImportOpen(true); }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/60 px-3 py-2 text-xs font-medium hover:border-primary/40 active:scale-95 transition-all"
+          >
+            <Upload className="h-3.5 w-3.5" /> Importar
+          </button>
+          <button
+            onClick={() => { feedback("switch"); bulkMode ? exitBulk() : setBulkMode(true); }}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium active:scale-95 transition-all ${
+              bulkMode ? "border-primary bg-primary/15 text-primary" : "border-border bg-surface/60"
+            }`}
+          >
+            <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Sair" : "Em massa"}
+          </button>
+        </div>
       </header>
 
       <ChurchFilter />
@@ -78,7 +119,7 @@ function Members() {
           return (
             <div key={r} className="neu-card p-2.5 text-center">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{r}</p>
-              <p className={`mt-0.5 text-lg font-bold`} style={{ color: `var(--${t.dot.replace("bg-", "")})` }}>
+              <p className="mt-0.5 text-lg font-bold" style={{ color: `var(--${t.dot.replace("bg-", "")})` }}>
                 {roleCounts[r] ?? 0}
               </p>
             </div>
@@ -100,7 +141,7 @@ function Members() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setRoleFilter(t.id)}
+            onClick={() => { feedback("tap"); setRoleFilter(t.id); }}
             className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium ${
               roleFilter === t.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
             }`}
@@ -110,23 +151,30 @@ function Members() {
         ))}
       </div>
 
-      <div className="mt-5 space-y-2 pb-10">
+      <div className="mt-5 space-y-2 pb-32">
         {filtered.length === 0 && (
           <div className="neu-card p-6 text-center text-sm text-muted-foreground">
-            Nenhuma pessoa por aqui ainda. Use o botão ➕ para adicionar.
+            Nenhuma pessoa por aqui ainda. Use ➕ ou Importar.
           </div>
         )}
         {filtered.map((m) => {
-          const role = (m as any).ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+          const role = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
           const t = roleTone(role);
+          const isSel = selected.has(m.id);
           return (
-            <div key={m.id} className="neu-card flex items-center gap-3 p-4">
-              <span
-                className="grid h-10 w-10 place-items-center rounded-xl bg-surface-elevated text-base"
-                aria-hidden
-              >
-                {t.emoji}
-              </span>
+            <button
+              key={m.id}
+              onClick={() => bulkMode ? toggleSelect(m.id) : (feedback("tap"), setOpenMember(m))}
+              className={`neu-card flex w-full items-center gap-3 p-4 text-left active:scale-[0.99] transition-transform ${
+                isSel ? "ring-2 ring-primary" : ""
+              }`}
+            >
+              {bulkMode && (
+                isSel
+                  ? <CheckSquare className="h-4 w-4 text-primary" />
+                  : <Square className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-elevated text-base">{t.emoji}</span>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-semibold">{m.name}</p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -137,10 +185,403 @@ function Members() {
                   {m.birthday && <span className="inline-flex items-center gap-1"><Cake className="h-3 w-3" /> {new Date(m.birthday).toLocaleDateString("pt-BR")}</span>}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
+
+      {/* Bulk action bar */}
+      {bulkMode && selected.size > 0 && (
+        <BulkBar
+          count={selected.size}
+          churches={churches}
+          onClear={() => setSelected(new Set())}
+          onApply={async (action) => {
+            const ids = Array.from(selected);
+            if (action.kind === "delete") {
+              if (!confirm(`Excluir ${ids.length} pessoa(s)?`)) return;
+              const { error } = await supabase.from("members").delete().in("id", ids);
+              if (error) return toast.error(error.message);
+              feedback("success");
+              toast.success(`${ids.length} excluído(s)`);
+            } else {
+              const upd: any = {};
+              if (action.kind === "church") upd.church_id = action.value;
+              if (action.kind === "role") upd.ministerial_role = action.value;
+              if (action.kind === "type") upd.type = action.value;
+              const { error } = await supabase.from("members").update(upd).in("id", ids);
+              if (error) return toast.error(error.message);
+              feedback("success");
+              toast.success("Atualizado!");
+            }
+            setSelected(new Set());
+            invalidate();
+          }}
+        />
+      )}
+
+      <MemberDialog member={openMember} churches={churches} onClose={() => setOpenMember(null)} onChanged={invalidate} />
+      <ImportDialog open={importOpen} churches={churches} onClose={() => setImportOpen(false)} onDone={invalidate} />
     </div>
+  );
+}
+
+// =============== Member detail modal ===============
+function MemberDialog({
+  member, churches, onClose, onChanged,
+}: { member: Member | null; churches: { id: string; name: string; type: "matriz" | "filial" }[]; onClose: () => void; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Partial<Member>>({});
+  const [busy, setBusy] = useState(false);
+
+  if (!member) return null;
+  const m = member;
+  const role = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+  const t = roleTone(role);
+  const churchName = churches.find((c) => c.id === m.church_id)?.name ?? "—";
+
+  const startEdit = () => { setForm(m); setEditing(true); feedback("tap"); };
+
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("members").update({
+      name: form.name,
+      phone: form.phone || null,
+      birthday: form.birthday || null,
+      ministerial_role: form.ministerial_role || null,
+      church_id: form.church_id,
+      type: form.type,
+      notes: form.notes || null,
+    }).eq("id", m.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    feedback("success");
+    toast.success("Atualizado!");
+    setEditing(false);
+    onChanged();
+    onClose();
+  };
+
+  const remove = async () => {
+    if (!confirm(`Tem certeza que deseja excluir ${m.name}?`)) return;
+    const { error } = await supabase.from("members").delete().eq("id", m.id);
+    if (error) return toast.error(error.message);
+    feedback("warning");
+    toast.success("Removido");
+    onChanged();
+    onClose();
+  };
+
+  const transfer = async (newId: string) => {
+    if (newId === m.church_id) return;
+    const { error } = await supabase.from("members").update({ church_id: newId }).eq("id", m.id);
+    if (error) return toast.error(error.message);
+    feedback("success");
+    toast.success("Transferido!");
+    onChanged();
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!member} onOpenChange={(o) => !o && (setEditing(false), onClose())}>
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-border bg-surface sm:rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/15 text-2xl">{t.emoji}</span>
+            <div>
+              <p className="text-lg font-bold">{m.name}</p>
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${t.badge}`}>{role}</span>
+            </div>
+          </DialogTitle>
+          <DialogDescription className="text-xs">{churchName}</DialogDescription>
+        </DialogHeader>
+
+        {!editing ? (
+          <>
+            <dl className="space-y-2 text-sm">
+              <Row label="Telefone" value={m.phone || "—"} />
+              <Row label="Aniversário" value={m.birthday ? new Date(m.birthday).toLocaleDateString("pt-BR") : "—"} />
+              <Row label="Status" value={m.type === "visitor" ? "Visitante" : "Membro ativo"} />
+              <Row label="Igreja" value={churchName} />
+              {m.notes && <Row label="Observações" value={m.notes} />}
+            </dl>
+
+            <p className="mt-4 mb-2 text-xs uppercase tracking-wider text-muted-foreground">Mudar de igreja</p>
+            <div className="flex flex-wrap gap-2">
+              {churches.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => transfer(c.id)}
+                  disabled={c.id === m.church_id}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                    c.id === m.church_id ? "border-primary bg-primary/15 text-primary" : "border-border bg-surface/60 hover:border-primary/40 active:scale-95"
+                  }`}
+                >
+                  <ArrowRightLeft className="h-3 w-3" /> {c.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button onClick={startEdit} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground active:scale-95 transition-transform">
+                <Pencil className="h-4 w-4" /> Editar
+              </button>
+              <button onClick={remove} className="inline-flex items-center justify-center gap-2 rounded-full border border-destructive/40 py-2.5 text-sm font-semibold text-destructive active:scale-95 transition-transform">
+                <Trash2 className="h-4 w-4" /> Excluir
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <Field label="Nome">
+              <input className="input" value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </Field>
+            <Field label="Telefone">
+              <input className="input" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </Field>
+            <Field label="Aniversário">
+              <input type="date" className="input" value={form.birthday ?? ""} onChange={(e) => setForm({ ...form, birthday: e.target.value })} />
+            </Field>
+            <Field label="Cargo ministerial">
+              <select className="input" value={form.ministerial_role ?? ""} onChange={(e) => setForm({ ...form, ministerial_role: e.target.value })}>
+                <option value="">—</option>
+                {MINISTERIAL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </Field>
+            <Field label="Status">
+              <select className="input" value={form.type ?? "member"} onChange={(e) => setForm({ ...form, type: e.target.value as any })}>
+                <option value="member">Membro</option>
+                <option value="visitor">Visitante</option>
+              </select>
+            </Field>
+            <Field label="Observações">
+              <textarea className="input min-h-[60px]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </Field>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button onClick={() => setEditing(false)} className="rounded-full border border-border py-2.5 text-sm">Cancelar</button>
+              <button disabled={busy} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl bg-surface-elevated px-3 py-2">
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd className="text-right text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+// =============== Bulk action bar ===============
+type BulkAction =
+  | { kind: "church"; value: string }
+  | { kind: "role"; value: string }
+  | { kind: "type"; value: "member" | "visitor" }
+  | { kind: "delete" };
+
+function BulkBar({
+  count, churches, onClear, onApply,
+}: {
+  count: number;
+  churches: { id: string; name: string; type: "matriz" | "filial" }[];
+  onClear: () => void;
+  onApply: (a: BulkAction) => void;
+}) {
+  const [open, setOpen] = useState<"church" | "role" | "type" | null>(null);
+  return (
+    <div className="fixed bottom-24 left-1/2 z-40 w-[min(100%-2rem,32rem)] -translate-x-1/2 animate-in slide-in-from-bottom-2">
+      <div className="glass rounded-2xl p-3 shadow-[var(--shadow-soft)]">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">{count} selecionado(s)</p>
+          <button onClick={onClear} className="text-xs text-muted-foreground"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Pop label="Mudar igreja" open={open === "church"} onToggle={() => setOpen(open === "church" ? null : "church")}>
+            {churches.map((c) => (
+              <li key={c.id}><button className="block w-full px-3 py-2 text-left text-sm hover:bg-primary/10" onClick={() => { onApply({ kind: "church", value: c.id }); setOpen(null); }}>{c.name}</button></li>
+            ))}
+          </Pop>
+          <Pop label="Cargo" open={open === "role"} onToggle={() => setOpen(open === "role" ? null : "role")}>
+            {MINISTERIAL_ROLES.map((r) => (
+              <li key={r}><button className="block w-full px-3 py-2 text-left text-sm hover:bg-primary/10" onClick={() => { onApply({ kind: "role", value: r }); setOpen(null); }}>{r}</button></li>
+            ))}
+          </Pop>
+          <Pop label="Status" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
+            <li><button className="block w-full px-3 py-2 text-left text-sm hover:bg-primary/10" onClick={() => { onApply({ kind: "type", value: "member" }); setOpen(null); }}>Membro</button></li>
+            <li><button className="block w-full px-3 py-2 text-left text-sm hover:bg-primary/10" onClick={() => { onApply({ kind: "type", value: "visitor" }); setOpen(null); }}>Visitante</button></li>
+          </Pop>
+          <button onClick={() => onApply({ kind: "delete" })} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive active:scale-95">
+            <Trash2 className="h-3.5 w-3.5" /> Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Pop({ label, open, onToggle, children }: { label: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <button onClick={onToggle} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${open ? "border-primary bg-primary/15 text-primary" : "border-border bg-surface/60"}`}>
+        {label}
+      </button>
+      {open && (
+        <ul className="absolute bottom-full left-0 z-50 mb-2 max-h-60 w-48 overflow-auto rounded-xl border border-border bg-surface-elevated shadow-lg">
+          {children}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// =============== Import dialog ===============
+function ImportDialog({
+  open, churches, onClose, onDone,
+}: { open: boolean; churches: { id: string; name: string; type: "matriz" | "filial" }[]; onClose: () => void; onDone: () => void }) {
+  const { user } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<any[]>([]);
+  const [defaultChurch, setDefaultChurch] = useState<string>(churches.find((c) => c.type === "matriz")?.id ?? churches[0]?.id ?? "");
+  const [busy, setBusy] = useState(false);
+  const [fileName, setFileName] = useState("");
+
+  const close = () => { setRows([]); setFileName(""); onClose(); };
+
+  const onFile = async (f: File) => {
+    setFileName(f.name);
+    try {
+      if (f.name.toLowerCase().endsWith(".csv")) {
+        const Papa = (await import("papaparse")).default;
+        const text = await f.text();
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        setRows((parsed.data as any[]).slice(0, 1000));
+      } else {
+        const XLSX = await import("xlsx");
+        const buf = await f.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as any[];
+        setRows(data.slice(0, 1000));
+      }
+      feedback("success");
+    } catch (e: any) {
+      toast.error("Não consegui ler o arquivo: " + (e.message ?? ""));
+    }
+  };
+
+  const findKey = (row: any, names: string[]) => {
+    const keys = Object.keys(row);
+    for (const n of names) {
+      const k = keys.find((k) => k.toLowerCase().trim() === n.toLowerCase());
+      if (k && row[k] != null && String(row[k]).trim()) return String(row[k]).trim();
+    }
+    return "";
+  };
+
+  const valid = useMemo(
+    () => rows.map((r) => ({
+      name: findKey(r, ["nome", "name"]),
+      phone: findKey(r, ["telefone", "phone", "celular"]),
+      role: findKey(r, ["cargo", "cargo ministerial", "role", "ministerial_role"]),
+      churchName: findKey(r, ["igreja", "church"]),
+      type: findKey(r, ["status", "type"]).toLowerCase(),
+      notes: findKey(r, ["observacao", "observação", "observações", "notes", "obs"]),
+    })).filter((r) => r.name),
+    [rows],
+  );
+
+  const submit = async () => {
+    if (!user || !defaultChurch) return toast.error("Escolha a igreja padrão");
+    setBusy(true);
+    const churchByName = new Map(churches.map((c) => [c.name.toLowerCase(), c.id]));
+    const payload = valid.map((r) => ({
+      owner_id: user.id,
+      church_id: churchByName.get(r.churchName.toLowerCase()) ?? defaultChurch,
+      type: (r.type === "visitor" || r.type === "visitante") ? "visitor" : "member",
+      name: r.name.slice(0, 200),
+      phone: r.phone || null,
+      ministerial_role: r.role || null,
+      notes: r.notes || null,
+    }));
+    // chunked insert (200/lote)
+    let inserted = 0;
+    for (let i = 0; i < payload.length; i += 200) {
+      const chunk = payload.slice(i, i + 200);
+      const { error } = await supabase.from("members").insert(chunk as any);
+      if (error) { setBusy(false); toast.error(error.message); return; }
+      inserted += chunk.length;
+    }
+    setBusy(false);
+    feedback("success");
+    toast.success(`${inserted} pessoa(s) importada(s)!`);
+    onDone();
+    close();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-border bg-surface sm:rounded-3xl">
+        <DialogHeader>
+          <DialogTitle>Importar lista de membros</DialogTitle>
+          <DialogDescription className="text-xs">CSV ou Excel (.xlsx) — até 1000 pessoas. Campos faltantes não bloqueiam.</DialogDescription>
+        </DialogHeader>
+
+        {!rows.length ? (
+          <div className="space-y-3">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="neu-card flex w-full flex-col items-center gap-2 p-8 text-center transition-transform hover:-translate-y-0.5"
+            >
+              <Upload className="h-6 w-6 text-primary" />
+              <p className="text-sm font-semibold">Selecionar arquivo</p>
+              <p className="text-xs text-muted-foreground">Colunas aceitas: Nome, Telefone, Igreja, Cargo, Status, Observações</p>
+            </button>
+            <input
+              ref={fileRef} type="file" accept=".csv,.xlsx,.xls" hidden
+              onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{fileName} · {valid.length} válida(s) de {rows.length}</p>
+            <Field label="Igreja padrão (quando não especificada)">
+              <select className="input" value={defaultChurch} onChange={(e) => setDefaultChurch(e.target.value)}>
+                {churches.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
+            <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-border bg-surface-elevated p-2">
+              {valid.slice(0, 50).map((r, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs">
+                  <span className="truncate font-medium">{r.name}</span>
+                  <span className="ml-2 text-muted-foreground">{r.role || "Membro"}{r.churchName ? ` · ${r.churchName}` : ""}</span>
+                </div>
+              ))}
+              {valid.length > 50 && <p className="px-2 py-1 text-[11px] text-muted-foreground">+ {valid.length - 50} a mais…</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setRows([])} className="rounded-full border border-border py-2.5 text-sm">Voltar</button>
+              <button disabled={busy || !valid.length} onClick={submit} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Importar {valid.length}
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
