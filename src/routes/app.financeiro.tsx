@@ -7,10 +7,12 @@ import { ChurchFilter } from "@/components/ChurchFilter";
 import { fmt, scopedChurchIds } from "./app.index";
 import { useMemo, useState } from "react";
 import {
-  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart,
 } from "recharts";
-import { Wallet, TrendingUp, TrendingDown, MessageCircle, FileDown, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, MessageCircle, FileDown, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight, Sparkles, Users as UsersIcon } from "lucide-react";
 import { toast } from "sonner";
+import { feedback } from "@/lib/feedback";
+import { roleTone } from "@/lib/ministerial-roles";
 
 const RANGES = [
   { id: "7", label: "7 dias", days: 7 },
