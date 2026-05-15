@@ -150,6 +150,27 @@ function AuthPage() {
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "signin" ? "Entrar" : "Criar conta"}
           </button>
+
+          {mode === "signin" && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!email) return toast.error("Digite seu email primeiro.");
+                try {
+                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) throw error;
+                  toast.success("Enviamos um link de recuperação para seu email.");
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Não foi possível enviar o email.");
+                }
+              }}
+              className="mt-1 block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Esqueceu sua senha?
+            </button>
+          )}
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
