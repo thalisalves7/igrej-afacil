@@ -145,6 +145,19 @@ function AuthPage() {
               className="w-full rounded-xl border border-input bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
             />
           </Field>
+          {mode === "signup" && (
+            <Field label="Confirmar senha">
+              <input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+                minLength={6}
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-input bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+              />
+            </Field>
+          )}
 
           <button
             type="submit"
