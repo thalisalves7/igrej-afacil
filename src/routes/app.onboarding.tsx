@@ -49,11 +49,7 @@ function Onboarding() {
   return (
     <div className="mx-auto max-w-md px-6 py-12">
       <div className="text-center">
-        <span className="grid mx-auto h-14 w-14 place-items-center rounded-2xl text-primary-foreground"
-          style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
-        >
-          <Building2 className="h-6 w-6" />
-        </span>
+        <div className="flex justify-center"><Logo size={48} /></div>
         <h1 className="mt-5 text-3xl font-bold tracking-tight">Vamos começar</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Cadastre sua <span className="font-semibold text-foreground">igreja matriz</span>.

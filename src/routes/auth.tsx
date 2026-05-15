@@ -71,11 +71,7 @@ function AuthPage() {
         </Link>
 
         <div className="mt-12 flex flex-col items-center text-center">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl text-primary-foreground"
-            style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
-          >
-            <Sparkles className="h-5 w-5" />
-          </span>
+          <Logo size={44} />
           <h1 className="mt-5 text-3xl font-bold tracking-tight">
             {mode === "signin" ? "Bem-vindo de volta" : "Crie sua conta"}
           </h1>
