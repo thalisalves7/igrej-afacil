@@ -16,6 +16,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,6 +26,10 @@ function AuthPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup") {
+      if (password.length < 6) return toast.error("A senha precisa ter ao menos 6 caracteres.");
+      if (password !== confirm) return toast.error("As senhas não coincidem.");
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -37,11 +42,11 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada! Bem-vindo.");
+        toast.success("Conta criada com sucesso.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast.success("Bem-vindo de volta!");
+        toast.success("Bem-vindo de volta.");
       }
     } catch (err) {
       const m = err instanceof Error ? err.message : "Não foi possível continuar.";
