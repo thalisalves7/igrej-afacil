@@ -2,12 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches, useInvalidateAll } from "@/lib/data";
 import { THEMES, useTheme } from "@/lib/theme";
-import { Building2, LogOut, Plus, Sparkles, Trash2, Loader2, Volume2, Vibrate } from "lucide-react";
+import { Building2, LogOut, Plus, Sparkles, Trash2, Loader2, Volume2, Vibrate, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { feedback, getPref, setPref } from "@/lib/feedback";
+import { LogoIcon } from "@/components/Logo";
 
 export const Route = createFileRoute("/app/perfil")({
   component: Profile,
@@ -38,23 +39,48 @@ function Profile() {
       </header>
 
       {/* Theme */}
-      <Section title="Tema do app">
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-7">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              className={`flex flex-col items-center gap-2 rounded-2xl border p-3 transition-colors ${
-                theme === t.id ? "border-primary bg-primary/5" : "border-border bg-surface/60 hover:border-primary/40"
-              }`}
-            >
-              <span
-                className="h-7 w-7 rounded-full ring-2 ring-border"
-                style={{ background: t.swatch }}
-              />
-              <span className="text-[10px] font-medium">{t.label}</span>
-            </button>
-          ))}
+      <Section title="Aparência">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Personalize a cor do app, do ícone e da splash screen. A escolha é salva automaticamente.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {THEMES.map((t) => {
+            const active = theme === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setTheme(t.id); feedback("switch"); }}
+                className={`group relative overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 ${
+                  active ? "border-primary shadow-[var(--shadow-glow)]" : "border-border bg-surface/60 hover:border-primary/40"
+                }`}
+              >
+                <div
+                  aria-hidden
+                  className="absolute inset-0 opacity-30"
+                  style={{ background: `radial-gradient(circle at 30% 20%, ${t.hex.from}, transparent 60%)` }}
+                />
+                <div className="relative flex items-center gap-3">
+                  <span
+                    className="grid h-12 w-12 place-items-center rounded-xl text-primary-foreground"
+                    style={{ background: `linear-gradient(135deg, ${t.hex.from}, ${t.hex.to})` }}
+                  >
+                    <span style={{ color: t.hex.bg }}><LogoIcon size={22} /></span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{t.label}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {active ? "Ativo" : "Tocar para usar"}
+                    </p>
+                  </div>
+                  {active && (
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </Section>
 

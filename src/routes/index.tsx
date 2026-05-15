@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { Logo } from "@/components/Logo";
 import {
   ArrowRight,
   Users,
@@ -55,11 +56,7 @@ function Nav() {
       <div className="mx-auto max-w-7xl px-6 py-4">
         <div className="glass flex items-center justify-between rounded-2xl px-4 py-2.5">
           <Link to="/" className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-xl text-primary-foreground"
-              style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
-            >
-              <Sparkles className="h-4 w-4" />
-            </span>
+            <Logo size={28} />
             <span className="font-semibold tracking-tight">Igreja Fácil</span>
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
