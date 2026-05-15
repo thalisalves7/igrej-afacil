@@ -52,6 +52,7 @@ function AppLayout() {
         <BottomNav active={location.pathname} onPlus={() => setQuickOpen(true)} />
       )}
       <QuickAddModal open={quickOpen} onClose={() => setQuickOpen(false)} />
+      {!onboarding && <InstallPrompt />}
     </div>
   );
 }
