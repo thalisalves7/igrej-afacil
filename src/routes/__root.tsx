@@ -86,6 +86,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "Organize sua igreja, finanças, membros e filiais em um sistema simples, moderno e premium." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ad4a0de2-43f4-4d44-b4ab-325bd0c388a0/id-preview-b5e7db51--20976753-fc84-48e5-8577-073b1937c134.lovable.app-1778613573801.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ad4a0de2-43f4-4d44-b4ab-325bd0c388a0/id-preview-b5e7db51--20976753-fc84-48e5-8577-073b1937c134.lovable.app-1778613573801.png" },
+      { name: "theme-color", content: "#0b0b14" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Igreja Fácil" },
+      { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
