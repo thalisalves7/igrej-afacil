@@ -16,6 +16,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,6 +26,10 @@ function AuthPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup") {
+      if (password.length < 6) return toast.error("A senha precisa ter ao menos 6 caracteres.");
+      if (password !== confirm) return toast.error("As senhas não coincidem.");
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -37,11 +42,11 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada! Bem-vindo.");
+        toast.success("Conta criada com sucesso.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast.success("Bem-vindo de volta!");
+        toast.success("Bem-vindo de volta.");
       }
     } catch (err) {
       const m = err instanceof Error ? err.message : "Não foi possível continuar.";
@@ -140,6 +145,19 @@ function AuthPage() {
               className="w-full rounded-xl border border-input bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
             />
           </Field>
+          {mode === "signup" && (
+            <Field label="Confirmar senha">
+              <input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+                minLength={6}
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-input bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+              />
+            </Field>
+          )}
 
           <button
             type="submit"
@@ -150,6 +168,27 @@ function AuthPage() {
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "signin" ? "Entrar" : "Criar conta"}
           </button>
+
+          {mode === "signin" && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!email) return toast.error("Digite seu email primeiro.");
+                try {
+                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) throw error;
+                  toast.success("Enviamos um link de recuperação para seu email.");
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Não foi possível enviar o email.");
+                }
+              }}
+              className="mt-1 block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Esqueceu sua senha?
+            </button>
+          )}
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
