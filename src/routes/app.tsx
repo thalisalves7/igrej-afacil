@@ -5,6 +5,7 @@ import { useChurches } from "@/lib/data";
 import { Home, Users, Calendar, User, Plus, Loader2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { QuickAddModal } from "@/components/QuickAddModal";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
