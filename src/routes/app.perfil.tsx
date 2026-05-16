@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { feedback, getPref, setPref } from "@/lib/feedback";
 import { LogoIcon } from "@/components/Logo";
+import { InstallAppCard } from "@/components/InstallAppCard";
 
 export const Route = createFileRoute("/app/perfil")({
   component: Profile,
@@ -85,6 +86,8 @@ function Profile() {
       </Section>
 
       <FeedbackSettings />
+
+      <InstallAppCard />
 
       {/* Churches */}
       <Section
