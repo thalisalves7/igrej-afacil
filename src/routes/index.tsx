@@ -12,7 +12,14 @@ import {
   Wallet,
   Calendar,
   Shield,
+  Zap,
+  Heart,
+  Clock,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import mockupDashboard from "@/assets/mockup-dashboard.jpg";
 import mockupFinance from "@/assets/mockup-finance.jpg";
 
@@ -27,6 +34,8 @@ function Landing() {
       <Nav />
       <Hero />
       <Logos />
+      <FeatureCarousel />
+      <Benefits />
       <Features />
       <FinanceShowcase />
       <Alerts />
@@ -312,6 +321,121 @@ function CtaBlock() {
             Entrar
           </Link>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function FeatureCarousel() {
+  const slides = [
+    { icon: Users, title: "Gestão de Membros", desc: "Cadastre e acompanhe membros, visitantes e líderes em poucos cliques." },
+    { icon: Wallet, title: "Controle Financeiro", desc: "Veja entradas, saídas e saldo da sua igreja em tempo real." },
+    { icon: Building2, title: "Multi-igrejas", desc: "Gerencie matriz e filiais em um único lugar, com filtros instantâneos." },
+    { icon: LineChart, title: "Dashboard Inteligente", desc: "Tenha clareza total da sua igreja em segundos, com gráficos modernos." },
+    { icon: FileText, title: "Relatórios", desc: "Compartilhe relatórios profissionais no WhatsApp e em PDF." },
+  ];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setI((v) => (v + 1) % slides.length), 4500);
+    return () => window.clearInterval(t);
+  }, [slides.length]);
+
+  const go = (d: number) => setI((v) => (v + d + slides.length) % slides.length);
+
+  return (
+    <section className="mx-auto max-w-5xl px-6 py-20">
+      <div className="mb-10 text-center">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Funcionalidades</p>
+        <h2 className="mt-3 text-balance text-4xl font-bold tracking-tight md:text-5xl">
+          O essencial, lindamente desenhado.
+        </h2>
+      </div>
+      <div className="relative overflow-hidden rounded-3xl">
+        <div
+          className="flex transition-transform duration-700 ease-out"
+          style={{ transform: `translateX(-${i * 100}%)` }}
+        >
+          {slides.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="w-full shrink-0 px-2">
+              <div className="neu-card relative overflow-hidden p-10 md:p-14">
+                <div
+                  aria-hidden
+                  className="absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-30 blur-3xl"
+                  style={{ background: "var(--gradient-primary)" }}
+                />
+                <span
+                  className="relative grid h-14 w-14 place-items-center rounded-2xl text-primary-foreground"
+                  style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
+                >
+                  <Icon className="h-6 w-6" />
+                </span>
+                <h3 className="relative mt-6 text-2xl font-bold md:text-3xl">{title}</h3>
+                <p className="relative mt-3 max-w-xl text-muted-foreground">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => go(-1)}
+          aria-label="Anterior"
+          className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-surface/80 text-foreground backdrop-blur hover:border-primary/50"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => go(1)}
+          aria-label="Próximo"
+          className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-surface/80 text-foreground backdrop-blur hover:border-primary/50"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="mt-6 flex items-center justify-center gap-2">
+        {slides.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setI(idx)}
+            aria-label={`Slide ${idx + 1}`}
+            className={`h-1.5 rounded-full transition-all ${idx === i ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30"}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Benefits() {
+  const items = [
+    { icon: Clock, title: "Dados em tempo real", desc: "Veja a situação da sua igreja em segundos, sem planilhas." },
+    { icon: Zap, title: "Menos burocracia", desc: "Liderança simples e direta, mesmo sem experiência com tecnologia." },
+    { icon: Wallet, title: "Clareza financeira", desc: "Entradas, saídas e dizimistas com transparência total." },
+    { icon: Building2, title: "Gestão centralizada", desc: "Matriz, filiais e ministérios em um único painel." },
+    { icon: Heart, title: "Mais tempo com pessoas", desc: "Cuide do ministério enquanto o app cuida do operacional." },
+    { icon: Shield, title: "Privacidade real", desc: "Cada igreja com seu próprio espaço seguro e isolado." },
+  ];
+  return (
+    <section className="mx-auto max-w-7xl px-6 py-24">
+      <div className="mx-auto mb-12 max-w-2xl text-center">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Por que Igreja Fácil</p>
+        <h2 className="mt-3 text-balance text-4xl font-bold tracking-tight md:text-5xl">
+          Pare de depender de mensagens e planilhas.
+        </h2>
+        <p className="mt-4 text-muted-foreground">
+          Mais tempo para cuidar de pessoas. Menos tempo com burocracia.
+        </p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {items.map(({ icon: Icon, title, desc }) => (
+          <div key={title} className="neu-card flex gap-4 p-5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Icon className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-semibold">{title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

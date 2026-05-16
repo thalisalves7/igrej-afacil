@@ -32,13 +32,12 @@ function buildIconSvg(from: string, to: string, bg: string) {
 </linearGradient></defs>
 <rect width='64' height='64' rx='14' fill='${bg}'/>
 <g fill='url(#g)'>
-<rect x='30' y='10' width='4' height='14' rx='1.2'/>
-<rect x='25' y='14' width='14' height='4' rx='1.2'/>
-<path d='M32 22 L13 36 V55 H51 V36 Z'/>
+<path d='M32 8 L8 30 L14 30 L32 16 L50 30 L56 30 Z'/>
+<path d='M10 30 H18 V46 H26 V54 H10 Z'/>
+<path d='M54 30 H46 V46 H38 V54 H54 Z'/>
+<rect x='30' y='22' width='4' height='30' rx='1'/>
+<rect x='24' y='32' width='16' height='4' rx='1'/>
 </g>
-<path d='M28 55 V46 a4 4 0 0 1 8 0 V55 Z' fill='${bg}'/>
-<circle cx='20' cy='44' r='2' fill='${bg}'/>
-<circle cx='44' cy='44' r='2' fill='${bg}'/>
 </svg>`;
 }
 
