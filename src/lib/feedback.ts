@@ -1,10 +1,24 @@
-// Camada sensorial: sons sutis + micro vibrações.
+// Camada sensorial: sons sutis + micro vibrações + intensidade visual.
 // Tudo guardado por preferência do usuário (localStorage) e SSR-safe.
 
 const SOUND_KEY = "ig-sound";
 const HAPTIC_KEY = "ig-haptic";
+const INTENSITY_KEY = "ig-intensity";
 
 export type FeedbackKind = "tap" | "success" | "warning" | "error" | "switch";
+export type Intensity = "soft" | "medium" | "premium";
+
+export function getIntensity(): Intensity {
+  if (typeof window === "undefined") return "medium";
+  const v = window.localStorage.getItem(INTENSITY_KEY) as Intensity | null;
+  return v === "soft" || v === "medium" || v === "premium" ? v : "medium";
+}
+export function setIntensity(v: Intensity) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(INTENSITY_KEY, v);
+  document.documentElement.setAttribute("data-intensity", v);
+}
+
 
 export function getPref(k: "sound" | "haptic"): boolean {
   if (typeof window === "undefined") return true;
@@ -68,4 +82,30 @@ function vibrate(kind: FeedbackKind) {
 export function feedback(kind: FeedbackKind = "tap") {
   playSound(kind);
   vibrate(kind);
+}
+
+/**
+ * Instala um listener global que dispara `feedback("tap")` em qualquer
+ * elemento interativo clicado (botão, link, [role=button], toggle, tab).
+ * Idempotente — chamável várias vezes sem duplicar handlers.
+ */
+let installed = false;
+export function installGlobalClickFeedback() {
+  if (typeof window === "undefined" || installed) return;
+  installed = true;
+  // aplica preferência inicial de intensidade no <html>
+  try { document.documentElement.setAttribute("data-intensity", getIntensity()); } catch {}
+  const handler = (e: Event) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const el = target.closest(
+      'button, a, [role="button"], [role="tab"], [role="menuitem"], [role="switch"], [role="option"], summary, label[for]'
+    ) as HTMLElement | null;
+    if (!el) return;
+    if (el.hasAttribute("data-no-feedback")) return;
+    if (el.getAttribute("aria-disabled") === "true" || (el as HTMLButtonElement).disabled) return;
+    const kind = (el.getAttribute("data-feedback") as FeedbackKind | null) ?? "tap";
+    feedback(kind);
+  };
+  window.addEventListener("pointerdown", handler, { passive: true, capture: true });
 }
