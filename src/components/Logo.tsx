@@ -2,16 +2,14 @@ import { type CSSProperties } from "react";
 
 /**
  * Logo oficial do Igreja Fácil.
- * Igreja minimalista com cruz central.
- * Usa as cores do tema ativo (var(--primary) / --primary-glow / --primary-foreground).
+ * Casa estilizada (teto + colunas em L) com cruz central.
+ * Usa cores do tema ativo (currentColor / --primary / --gradient-primary).
  */
 
 type Props = {
   size?: number;
   className?: string;
-  /** "tile" mostra ícone dentro de um quadrado com gradiente. "mark" mostra apenas o ícone. */
   variant?: "tile" | "mark";
-  /** Quando true, adiciona glow do tema. */
   glow?: boolean;
   style?: CSSProperties;
 };
@@ -26,19 +24,15 @@ export function LogoIcon({ size = 28, className }: { size?: number; className?: 
       aria-hidden="true"
       fill="currentColor"
     >
-      {/* cruz */}
-      <rect x="30" y="6" width="4" height="14" rx="1.2" />
-      <rect x="25" y="10" width="14" height="4" rx="1.2" />
-      {/* corpo da igreja */}
-      <path d="M32 18 L12 33 V54 H52 V33 Z" />
-      {/* porta arqueada (recorte) */}
-      <path
-        d="M28 54 V44 a4 4 0 0 1 8 0 V54 Z"
-        fill="color-mix(in oklab, var(--background) 70%, transparent)"
-      />
-      {/* janelinhas */}
-      <circle cx="20" cy="42" r="2" fill="color-mix(in oklab, var(--background) 70%, transparent)" />
-      <circle cx="44" cy="42" r="2" fill="color-mix(in oklab, var(--background) 70%, transparent)" />
+      {/* Telhado em pico (chevron) */}
+      <path d="M32 8 L8 30 L14 30 L32 16 L50 30 L56 30 Z" />
+      {/* Coluna esquerda em L */}
+      <path d="M10 30 H18 V46 H26 V54 H10 Z" />
+      {/* Coluna direita em L */}
+      <path d="M54 30 H46 V46 H38 V54 H54 Z" />
+      {/* Cruz central */}
+      <rect x="30" y="22" width="4" height="30" rx="1" />
+      <rect x="24" y="32" width="16" height="4" rx="1" />
     </svg>
   );
 }
@@ -46,10 +40,7 @@ export function LogoIcon({ size = 28, className }: { size?: number; className?: 
 export function Logo({ size = 40, className = "", variant = "tile", glow = true, style }: Props) {
   if (variant === "mark") {
     return (
-      <span
-        className={`inline-grid place-items-center text-primary ${className}`}
-        style={style}
-      >
+      <span className={`inline-grid place-items-center text-primary ${className}`} style={style}>
         <LogoIcon size={size} />
       </span>
     );
