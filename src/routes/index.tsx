@@ -12,7 +12,14 @@ import {
   Wallet,
   Calendar,
   Shield,
+  Zap,
+  Heart,
+  Clock,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import mockupDashboard from "@/assets/mockup-dashboard.jpg";
 import mockupFinance from "@/assets/mockup-finance.jpg";
 
@@ -27,6 +34,8 @@ function Landing() {
       <Nav />
       <Hero />
       <Logos />
+      <FeatureCarousel />
+      <Benefits />
       <Features />
       <FinanceShowcase />
       <Alerts />
