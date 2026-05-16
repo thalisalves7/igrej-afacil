@@ -1,8 +1,23 @@
-// Camada sensorial: sons sutis + micro vibrações.
+// Camada sensorial: sons sutis + micro vibrações + intensidade visual.
 // Tudo guardado por preferência do usuário (localStorage) e SSR-safe.
 
 const SOUND_KEY = "ig-sound";
 const HAPTIC_KEY = "ig-haptic";
+const INTENSITY_KEY = "ig-intensity";
+
+export type FeedbackKind = "tap" | "success" | "warning" | "error" | "switch";
+export type Intensity = "soft" | "medium" | "premium";
+
+export function getIntensity(): Intensity {
+  if (typeof window === "undefined") return "medium";
+  const v = window.localStorage.getItem(INTENSITY_KEY) as Intensity | null;
+  return v === "soft" || v === "medium" || v === "premium" ? v : "medium";
+}
+export function setIntensity(v: Intensity) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(INTENSITY_KEY, v);
+  document.documentElement.setAttribute("data-intensity", v);
+}
 
 export type FeedbackKind = "tap" | "success" | "warning" | "error" | "switch";
 
