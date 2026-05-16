@@ -13,6 +13,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/use-auth";
 import { ActiveChurchProvider } from "@/lib/data";
 import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
 
 function NotFoundComponent() {
   return (
