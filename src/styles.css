@@ -245,3 +245,14 @@
   50% { opacity: 1; }
 }
 .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+
+/* === Intensidade visual controlada pelo usuário === */
+:root[data-intensity="soft"] {
+  --shadow-glow: 0 0 30px -14px color-mix(in oklab, var(--primary) 28%, transparent);
+  --shadow-glow-soft: 0 0 18px -16px color-mix(in oklab, var(--primary) 18%, transparent);
+}
+:root[data-intensity="soft"] body { background-image: linear-gradient(180deg, var(--background), var(--background)); }
+:root[data-intensity="premium"] {
+  --shadow-glow: 0 0 80px -8px color-mix(in oklab, var(--primary) 65%, transparent);
+  --shadow-glow-soft: 0 0 56px -14px color-mix(in oklab, var(--primary) 45%, transparent);
+}
