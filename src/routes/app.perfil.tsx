@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { feedback, getPref, setPref } from "@/lib/feedback";
+import { feedback, getPref, setPref, getIntensity, setIntensity, type Intensity } from "@/lib/feedback";
 import { LogoIcon } from "@/components/Logo";
 import { InstallAppCard } from "@/components/InstallAppCard";
 
