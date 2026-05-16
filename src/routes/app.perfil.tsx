@@ -147,18 +147,56 @@ function Section({ title, children, action }: { title: string; children: React.R
 function FeedbackSettings() {
   const [sound, setSound] = useState(true);
   const [haptic, setHaptic] = useState(true);
-  useEffect(() => { setSound(getPref("sound")); setHaptic(getPref("haptic")); }, []);
+  const [intensity, setIntensityState] = useState<Intensity>("medium");
+  useEffect(() => {
+    setSound(getPref("sound"));
+    setHaptic(getPref("haptic"));
+    setIntensityState(getIntensity());
+  }, []);
   const toggle = (k: "sound" | "haptic", v: boolean) => {
     setPref(k, v);
     if (k === "sound") setSound(v); else setHaptic(v);
     if (v) feedback("switch");
   };
+  const pickIntensity = (v: Intensity) => {
+    setIntensity(v);
+    setIntensityState(v);
+    feedback("switch");
+  };
+  const options: { id: Intensity; label: string; desc: string }[] = [
+    { id: "soft", label: "Suave", desc: "Mínimo brilho." },
+    { id: "medium", label: "Médio", desc: "Equilíbrio elegante." },
+    { id: "premium", label: "Premium", desc: "Profundidade total." },
+  ];
   return (
     <section className="mt-6">
-      <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Sons & Vibração</h2>
+      <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Experiência</h2>
       <div className="space-y-2">
-        <Toggle icon={Volume2} label="Sons sutis" desc="Confirmações elegantes ao salvar." on={sound} onChange={(v) => toggle("sound", v)} />
+        <Toggle icon={Volume2} label="Sons sutis" desc="Confirmações elegantes ao tocar." on={sound} onChange={(v) => toggle("sound", v)} />
         <Toggle icon={Vibrate} label="Vibração" desc="Micro toque tátil em ações." on={haptic} onChange={(v) => toggle("haptic", v)} />
+        <div className="neu-card p-4">
+          <p className="text-sm font-semibold">Intensidade visual</p>
+          <p className="mb-3 text-xs text-muted-foreground">Quanta profundidade você quer sentir.</p>
+          <div className="grid grid-cols-3 gap-2">
+            {options.map((o) => {
+              const active = intensity === o.id;
+              return (
+                <button
+                  key={o.id}
+                  onClick={() => pickIntensity(o.id)}
+                  className={`rounded-xl border p-3 text-left transition-all ${
+                    active
+                      ? "border-primary bg-primary/10 shadow-[var(--shadow-glow-soft)]"
+                      : "border-border bg-surface/60 hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-xs font-semibold">{o.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{o.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </section>
   );
