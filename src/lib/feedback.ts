@@ -19,7 +19,6 @@ export function setIntensity(v: Intensity) {
   document.documentElement.setAttribute("data-intensity", v);
 }
 
-export type FeedbackKind = "tap" | "success" | "warning" | "error" | "switch";
 
 export function getPref(k: "sound" | "haptic"): boolean {
   if (typeof window === "undefined") return true;
