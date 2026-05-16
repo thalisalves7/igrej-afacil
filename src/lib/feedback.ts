@@ -83,3 +83,29 @@ export function feedback(kind: FeedbackKind = "tap") {
   playSound(kind);
   vibrate(kind);
 }
+
+/**
+ * Instala um listener global que dispara `feedback("tap")` em qualquer
+ * elemento interativo clicado (botão, link, [role=button], toggle, tab).
+ * Idempotente — chamável várias vezes sem duplicar handlers.
+ */
+let installed = false;
+export function installGlobalClickFeedback() {
+  if (typeof window === "undefined" || installed) return;
+  installed = true;
+  // aplica preferência inicial de intensidade no <html>
+  try { document.documentElement.setAttribute("data-intensity", getIntensity()); } catch {}
+  const handler = (e: Event) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const el = target.closest(
+      'button, a, [role="button"], [role="tab"], [role="menuitem"], [role="switch"], [role="option"], summary, label[for]'
+    ) as HTMLElement | null;
+    if (!el) return;
+    if (el.hasAttribute("data-no-feedback")) return;
+    if (el.getAttribute("aria-disabled") === "true" || (el as HTMLButtonElement).disabled) return;
+    const kind = (el.getAttribute("data-feedback") as FeedbackKind | null) ?? "tap";
+    feedback(kind);
+  };
+  window.addEventListener("pointerdown", handler, { passive: true, capture: true });
+}
