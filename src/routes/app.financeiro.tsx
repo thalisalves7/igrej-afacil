@@ -283,7 +283,11 @@ function Finance() {
                 );
               }
               return list.slice(0, 50).map((t) => (
-                <div key={t.id} className="neu-card flex items-center gap-3 p-3.5">
+                <button
+                  key={t.id}
+                  onClick={() => { feedback("tap"); setSelectedTx(t); }}
+                  className="neu-card flex w-full items-center gap-3 p-3.5 text-left active:scale-[0.99] transition-transform"
+                >
                   <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
                     {t.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                   </span>
@@ -297,11 +301,15 @@ function Finance() {
                   <p className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
                     {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
                   </p>
-                </div>
+                </button>
               ));
             })()}
           </div>
         </>
+      )}
+
+      {selectedTx && (
+        <TxDetailModal tx={selectedTx} churches={churches ?? []} onClose={() => setSelectedTx(null)} />
       )}
     </div>
   );
