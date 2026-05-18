@@ -2,14 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
-import { useChurches, useActiveChurch } from "@/lib/data";
+import { useChurches, useActiveChurch, useInvalidateAll } from "@/lib/data";
 import { ChurchFilter } from "@/components/ChurchFilter";
 import { fmt, scopedChurchIds } from "./app.index";
 import { useMemo, useState } from "react";
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart,
 } from "recharts";
-import { Wallet, TrendingUp, TrendingDown, MessageCircle, FileDown, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight, Sparkles, Users as UsersIcon } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, MessageCircle, FileDown, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight, Sparkles, Users as UsersIcon, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { feedback } from "@/lib/feedback";
 import { roleTone } from "@/lib/ministerial-roles";
