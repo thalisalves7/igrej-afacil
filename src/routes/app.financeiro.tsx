@@ -47,6 +47,7 @@ function Finance() {
   const [range, setRange] = useState<(typeof RANGES)[number]["id"]>("30");
   const days = RANGES.find((r) => r.id === range)!.days;
   const [tab, setTab] = useState<SubTab>("overview");
+  const [selectedTx, setSelectedTx] = useState<Tx | null>(null);
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["transactions", user?.id, filter, range],
