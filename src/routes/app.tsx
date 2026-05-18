@@ -70,7 +70,7 @@ function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
 
   return (
     <nav className="fixed bottom-4 left-1/2 z-30 w-[min(100%-1.5rem,28rem)] -translate-x-1/2">
-      <div className="glass flex items-center justify-around rounded-full px-2 py-2 shadow-[var(--shadow-soft)]">
+      <div className="glass flex items-center justify-between gap-1 rounded-full px-3 py-2 shadow-[var(--shadow-soft)]">
         {items.map((it, i) => {
           if (it.kind === "plus") {
             return (
@@ -78,7 +78,7 @@ function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
                 key={i}
                 onClick={onPlus}
                 aria-label="Adicionar"
-                className="grid h-12 w-12 -translate-y-3 place-items-center rounded-full text-primary-foreground transition-transform hover:scale-105"
+                className="grid h-12 w-12 shrink-0 -translate-y-3 place-items-center rounded-full text-primary-foreground transition-transform hover:scale-105"
                 style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
               >
                 <Plus className="h-5 w-5" />
@@ -91,12 +91,12 @@ function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
             <Link
               key={it.to}
               to={it.to}
-              className={`flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium transition-colors ${
+              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium leading-none transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="h-5 w-5" />
-              <span>{it.label}</span>
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="block max-w-full truncate whitespace-nowrap px-1">{it.label}</span>
             </Link>
           );
         })}
