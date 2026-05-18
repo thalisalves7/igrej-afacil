@@ -2,14 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
-import { useChurches, useActiveChurch } from "@/lib/data";
+import { useChurches, useActiveChurch, useInvalidateAll } from "@/lib/data";
 import { ChurchFilter } from "@/components/ChurchFilter";
 import { fmt, scopedChurchIds } from "./app.index";
 import { useMemo, useState } from "react";
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart,
 } from "recharts";
-import { Wallet, TrendingUp, TrendingDown, MessageCircle, FileDown, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight, Sparkles, Users as UsersIcon } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, MessageCircle, FileDown, ArrowUpRight, ArrowDownRight, Loader2, ChevronLeft, ChevronRight, Sparkles, Users as UsersIcon, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { feedback } from "@/lib/feedback";
 import { roleTone } from "@/lib/ministerial-roles";
@@ -47,6 +47,7 @@ function Finance() {
   const [range, setRange] = useState<(typeof RANGES)[number]["id"]>("30");
   const days = RANGES.find((r) => r.id === range)!.days;
   const [tab, setTab] = useState<SubTab>("overview");
+  const [selectedTx, setSelectedTx] = useState<Tx | null>(null);
 
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["transactions", user?.id, filter, range],
@@ -282,7 +283,11 @@ function Finance() {
                 );
               }
               return list.slice(0, 50).map((t) => (
-                <div key={t.id} className="neu-card flex items-center gap-3 p-3.5">
+                <button
+                  key={t.id}
+                  onClick={() => { feedback("tap"); setSelectedTx(t); }}
+                  className="neu-card flex w-full items-center gap-3 p-3.5 text-left active:scale-[0.99] transition-transform"
+                >
                   <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
                     {t.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                   </span>
@@ -296,11 +301,15 @@ function Finance() {
                   <p className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
                     {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
                   </p>
-                </div>
+                </button>
               ));
             })()}
           </div>
         </>
+      )}
+
+      {selectedTx && (
+        <TxDetailModal tx={selectedTx} churches={churches ?? []} onClose={() => setSelectedTx(null)} />
       )}
     </div>
   );
@@ -824,6 +833,177 @@ function SummaryCard({
       <p className={`mt-1.5 truncate text-base font-bold ${tone}`}>{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
     </div>
+  );
+}
+
+function TxDetailModal({ tx, churches, onClose }: { tx: Tx; churches: Church[]; onClose: () => void }) {
+  const invalidate = useInvalidateAll();
+  const [editing, setEditing] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const [amount, setAmount] = useState(String(tx.amount).replace(".", ","));
+  const [category, setCategory] = useState(tx.category ?? "");
+  const [description, setDescription] = useState(tx.description ?? "");
+  const [churchId, setChurchId] = useState(tx.church_id);
+  const [occurredAt, setOccurredAt] = useState(tx.occurred_at);
+  const [titherName, setTitherName] = useState(tx.tither_name ?? "");
+
+  const churchName = churches.find((c) => c.id === tx.church_id)?.name ?? "—";
+
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase
+      .from("transactions")
+      .update({
+        amount: Number(amount.replace(",", ".")),
+        category: category || null,
+        description: description || null,
+        church_id: churchId,
+        occurred_at: occurredAt,
+        tither_name: titherName.trim() || null,
+      })
+      .eq("id", tx.id);
+    setBusy(false);
+    if (error) { feedback("error"); return toast.error(error.message); }
+    feedback("success");
+    toast.success("Movimentação atualizada!");
+    invalidate();
+    onClose();
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("transactions").delete().eq("id", tx.id);
+    setBusy(false);
+    if (error) { feedback("error"); return toast.error(error.message); }
+    feedback("success");
+    toast.success("Movimentação excluída.");
+    invalidate();
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-3xl border border-border bg-surface p-5 shadow-[var(--shadow-soft)] animate-in zoom-in-95"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {tx.type === "income" ? "Entrada" : "Saída"}
+            </p>
+            <h3 className={`text-2xl font-bold ${tx.type === "income" ? "text-success" : "text-destructive"}`}>
+              {tx.type === "income" ? "+" : "-"}{fmt(Number(amount.replace(",", ".") || tx.amount))}
+            </h3>
+          </div>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-surface-elevated">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {!editing && !confirmDel && (
+          <>
+            <dl className="space-y-2.5 rounded-2xl bg-surface-elevated/60 p-4 text-sm">
+              <Row label="Categoria" value={tx.category || "—"} />
+              <Row label="Data" value={new Date(tx.occurred_at).toLocaleDateString("pt-BR")} />
+              <Row label="Igreja" value={churchName} />
+              {tx.tither_name && <Row label="Dizimista" value={tx.tither_name} />}
+              <Row label="Observação" value={tx.description || "—"} />
+            </dl>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { feedback("tap"); setEditing(true); }}
+                className="flex items-center justify-center gap-2 rounded-full border border-border bg-surface-elevated py-2.5 text-sm font-medium hover:bg-surface"
+              >
+                <Pencil className="h-4 w-4" /> Editar
+              </button>
+              <button
+                onClick={() => { feedback("warning"); setConfirmDel(true); }}
+                className="flex items-center justify-center gap-2 rounded-full border border-destructive/40 bg-destructive/10 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/15"
+              >
+                <Trash2 className="h-4 w-4" /> Excluir
+              </button>
+            </div>
+          </>
+        )}
+
+        {editing && (
+          <form onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-3">
+            <Field label="Valor (R$)">
+              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" required className="input" />
+            </Field>
+            <Field label="Categoria">
+              <input value={category} onChange={(e) => setCategory(e.target.value)} className="input" />
+            </Field>
+            <Field label="Data">
+              <input type="date" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} required className="input" />
+            </Field>
+            <Field label="Igreja">
+              <select value={churchId} onChange={(e) => setChurchId(e.target.value)} className="input">
+                {churches.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.type === "matriz" ? " (Matriz)" : ""}</option>
+                ))}
+              </select>
+            </Field>
+            {tx.type === "income" && (
+              <Field label="Dizimista (opcional)">
+                <input value={titherName} onChange={(e) => setTitherName(e.target.value)} className="input" />
+              </Field>
+            )}
+            <Field label="Observação">
+              <input value={description} onChange={(e) => setDescription(e.target.value)} className="input" />
+            </Field>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setEditing(false)} className="rounded-full border border-border py-2.5 text-sm font-medium hover:bg-surface-elevated">
+                Cancelar
+              </button>
+              <button type="submit" disabled={busy} className="flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+              </button>
+            </div>
+          </form>
+        )}
+
+        {confirmDel && (
+          <div>
+            <p className="rounded-2xl bg-destructive/10 p-4 text-sm text-foreground">
+              Deseja realmente excluir esta movimentação? Esta ação não pode ser desfeita.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button onClick={() => setConfirmDel(false)} className="rounded-full border border-border py-2.5 text-sm font-medium hover:bg-surface-elevated">
+                Cancelar
+              </button>
+              <button onClick={remove} disabled={busy} className="flex items-center justify-center gap-2 rounded-full bg-destructive py-2.5 text-sm font-semibold text-destructive-foreground disabled:opacity-60">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Excluir
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd className="max-w-[60%] text-right text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      {children}
+    </label>
   );
 }
 
