@@ -133,7 +133,7 @@ function EquipePage() {
 
       <button
         onClick={() => {
-          feedback.tap();
+          feedback("tap");
           setOpenInvite(true);
         }}
         className="group mb-6 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
@@ -258,7 +258,7 @@ function RemoveButton({ id, onDone }: { id: string; onDone: () => void }) {
         setLoading(false);
         if (error) toast.error("Não foi possível remover");
         else {
-          feedback.success();
+          feedback("success");
           toast.success("Removido da equipe");
           onDone();
         }
@@ -282,7 +282,7 @@ function RevokeButton({ id, onDone }: { id: string; onDone: () => void }) {
           .eq("id", id);
         if (error) toast.error("Erro ao revogar");
         else {
-          feedback.tap();
+          feedback("tap");
           toast.success("Convite revogado");
           onDone();
         }
@@ -367,7 +367,7 @@ function InviteModal({
       toast.error("Erro ao criar convite");
       return;
     }
-    feedback.success();
+    feedback("success");
     toast.success("Convite criado");
     onCreated({ ...data, role: data.role as AppRole });
   };
@@ -441,7 +441,7 @@ function InviteModal({
                   key={r}
                   onClick={() => {
                     setRole(r);
-                    feedback.tap();
+                    feedback("tap");
                   }}
                   className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition-all ${
                     role === r
@@ -525,14 +525,14 @@ function ShareModal({ invitation, onClose }: { invitation: Invitation | null; on
             href={`https://wa.me/?text=${encodeURIComponent(text)}`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => feedback.tap()}
+            onClick={() => feedback("tap")}
             className="flex items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-semibold text-success-foreground"
           >
             <MessageCircle className="h-4 w-4" /> WhatsApp
           </a>
           <a
             href={`mailto:${invitation.email}?subject=${encodeURIComponent("Convite Igreja Fácil")}&body=${encodeURIComponent(text)}`}
-            onClick={() => feedback.tap()}
+            onClick={() => feedback("tap")}
             className="flex items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold"
           >
             <Mail className="h-4 w-4" /> Email
@@ -540,7 +540,7 @@ function ShareModal({ invitation, onClose }: { invitation: Invitation | null; on
           <button
             onClick={async () => {
               await navigator.clipboard.writeText(link);
-              feedback.success();
+              feedback("success");
               toast.success("Link copiado");
             }}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold"
