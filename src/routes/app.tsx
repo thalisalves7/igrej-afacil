@@ -50,12 +50,18 @@ function AppLayout() {
       <Outlet />
 
       {!onboarding && (
-        <BottomNav active={location.pathname} onPlus={() => setQuickOpen(true)} />
+        <RoleAwareBottomNav active={location.pathname} onPlus={() => setQuickOpen(true)} />
       )}
       <QuickAddModal open={quickOpen} onClose={() => setQuickOpen(false)} />
       {!onboarding && <InstallPrompt />}
     </div>
   );
+}
+
+function RoleAwareBottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
+  const { data: ctx } = useOrgContext();
+  const role: AppRole | null = ctx?.role ?? null;
+  return <BottomNav active={active} onPlus={onPlus} role={role} canManageTeam={ctx?.role === "admin" || !!ctx?.is_owner} />;
 }
 
 type NavItem = { kind: "link"; to: string; icon: typeof Home; label: string } | { kind: "plus" };
