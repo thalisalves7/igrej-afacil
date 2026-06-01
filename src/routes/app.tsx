@@ -2,7 +2,8 @@ import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches } from "@/lib/data";
-import { Home, Users, Calendar, User, Plus, Loader2, Wallet } from "lucide-react";
+import { useOrgContext, can, type AppRole } from "@/lib/org";
+import { Home, Users, User, Plus, Loader2, Wallet, Shield } from "lucide-react";
 import { useState } from "react";
 import { QuickAddModal } from "@/components/QuickAddModal";
 import { InstallPrompt } from "@/components/InstallPrompt";
