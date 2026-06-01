@@ -2,7 +2,8 @@ import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches } from "@/lib/data";
-import { Home, Users, Calendar, User, Plus, Loader2, Wallet } from "lucide-react";
+import { useOrgContext, can, type AppRole } from "@/lib/org";
+import { Home, Users, User, Plus, Loader2, Wallet, Shield } from "lucide-react";
 import { useState } from "react";
 import { QuickAddModal } from "@/components/QuickAddModal";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -49,7 +50,7 @@ function AppLayout() {
       <Outlet />
 
       {!onboarding && (
-        <BottomNav active={location.pathname} onPlus={() => setQuickOpen(true)} />
+        <RoleAwareBottomNav active={location.pathname} onPlus={() => setQuickOpen(true)} />
       )}
       <QuickAddModal open={quickOpen} onClose={() => setQuickOpen(false)} />
       {!onboarding && <InstallPrompt />}
@@ -57,14 +58,24 @@ function AppLayout() {
   );
 }
 
+function RoleAwareBottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
+  const { data: ctx } = useOrgContext();
+  const role: AppRole | null = ctx?.role ?? null;
+  return <BottomNav active={active} onPlus={onPlus} role={role} canManageTeam={ctx?.role === "admin" || !!ctx?.is_owner} />;
+}
+
 type NavItem = { kind: "link"; to: string; icon: typeof Home; label: string } | { kind: "plus" };
 
-function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
+function BottomNav({ active, onPlus, role, canManageTeam }: { active: string; onPlus: () => void; role: AppRole | null; canManageTeam: boolean }) {
+  const showMembers = !role || can(role, "members.view");
+  const showFinance = !role || can(role, "financial.view");
+
   const items: NavItem[] = [
     { kind: "link", to: "/app", icon: Home, label: "Início" },
-    { kind: "link", to: "/app/membros", icon: Users, label: "Membros" },
+    ...(showMembers ? [{ kind: "link", to: "/app/membros", icon: Users, label: "Membros" } as NavItem] : []),
     { kind: "plus" },
-    { kind: "link", to: "/app/financeiro", icon: Wallet, label: "Finanças" },
+    ...(showFinance ? [{ kind: "link", to: "/app/financeiro", icon: Wallet, label: "Finanças" } as NavItem] : []),
+    ...(canManageTeam ? [{ kind: "link", to: "/app/equipe", icon: Shield, label: "Equipe" } as NavItem] : []),
     { kind: "link", to: "/app/perfil", icon: User, label: "Perfil" },
   ];
 
