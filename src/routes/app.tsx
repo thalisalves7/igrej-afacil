@@ -66,12 +66,16 @@ function RoleAwareBottomNav({ active, onPlus }: { active: string; onPlus: () => 
 
 type NavItem = { kind: "link"; to: string; icon: typeof Home; label: string } | { kind: "plus" };
 
-function BottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
+function BottomNav({ active, onPlus, role, canManageTeam }: { active: string; onPlus: () => void; role: AppRole | null; canManageTeam: boolean }) {
+  const showMembers = !role || can(role, "members.view");
+  const showFinance = !role || can(role, "financial.view");
+
   const items: NavItem[] = [
     { kind: "link", to: "/app", icon: Home, label: "Início" },
-    { kind: "link", to: "/app/membros", icon: Users, label: "Membros" },
+    ...(showMembers ? [{ kind: "link", to: "/app/membros", icon: Users, label: "Membros" } as NavItem] : []),
     { kind: "plus" },
-    { kind: "link", to: "/app/financeiro", icon: Wallet, label: "Finanças" },
+    ...(showFinance ? [{ kind: "link", to: "/app/financeiro", icon: Wallet, label: "Finanças" } as NavItem] : []),
+    ...(canManageTeam ? [{ kind: "link", to: "/app/equipe", icon: Shield, label: "Equipe" } as NavItem] : []),
     { kind: "link", to: "/app/perfil", icon: User, label: "Perfil" },
   ];
 
