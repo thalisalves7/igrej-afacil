@@ -21,6 +21,7 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          organization_id: string | null
           owner_id: string
           pastor: string | null
           phone: string | null
@@ -33,6 +34,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          organization_id?: string | null
           owner_id: string
           pastor?: string | null
           phone?: string | null
@@ -45,13 +47,22 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          organization_id?: string | null
           owner_id?: string
           pastor?: string | null
           phone?: string | null
           type?: Database["public"]["Enums"]["church_type"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "churches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events: {
         Row: {
@@ -59,6 +70,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          organization_id: string | null
           owner_id: string
           starts_at: string
           title: string
@@ -70,6 +82,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          organization_id?: string | null
           owner_id: string
           starts_at: string
           title: string
@@ -81,6 +94,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          organization_id?: string | null
           owner_id?: string
           starts_at?: string
           title?: string
@@ -95,6 +109,76 @@ export type Database = {
             referencedRelation: "churches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          branch_church_id: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          full_name: string | null
+          id: string
+          invited_by_user_id: string
+          organization_id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          branch_church_id?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by_user_id: string
+          organization_id: string
+          phone?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          branch_church_id?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by_user_id?: string
+          organization_id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_branch_church_id_fkey"
+            columns: ["branch_church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       members: {
@@ -107,6 +191,7 @@ export type Database = {
           ministerial_role: string | null
           name: string
           notes: string | null
+          organization_id: string | null
           owner_id: string
           phone: string | null
           type: Database["public"]["Enums"]["member_type"]
@@ -121,6 +206,7 @@ export type Database = {
           ministerial_role?: string | null
           name: string
           notes?: string | null
+          organization_id?: string | null
           owner_id: string
           phone?: string | null
           type?: Database["public"]["Enums"]["member_type"]
@@ -135,6 +221,7 @@ export type Database = {
           ministerial_role?: string | null
           name?: string
           notes?: string | null
+          organization_id?: string | null
           owner_id?: string
           phone?: string | null
           type?: Database["public"]["Enums"]["member_type"]
@@ -148,7 +235,80 @@ export type Database = {
             referencedRelation: "churches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      org_members: {
+        Row: {
+          branch_church_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          branch_church_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          branch_church_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_members_branch_church_id_fkey"
+            columns: ["branch_church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -189,6 +349,7 @@ export type Database = {
           description: string | null
           id: string
           occurred_at: string
+          organization_id: string | null
           owner_id: string
           tither_member_id: string | null
           tither_name: string | null
@@ -203,6 +364,7 @@ export type Database = {
           description?: string | null
           id?: string
           occurred_at?: string
+          organization_id?: string | null
           owner_id: string
           tither_member_id?: string | null
           tither_name?: string | null
@@ -217,6 +379,7 @@ export type Database = {
           description?: string | null
           id?: string
           occurred_at?: string
+          organization_id?: string | null
           owner_id?: string
           tither_member_id?: string | null
           tither_name?: string | null
@@ -229,6 +392,13 @@ export type Database = {
             columns: ["church_id"]
             isOneToOne: false
             referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -245,9 +415,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_branch: {
+        Args: { _org: string; _user: string }
+        Returns: string
+      }
+      get_user_org_role: {
+        Args: { _org: string; _user: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_org_role: {
+        Args: {
+          _org: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user: string
+        }
+        Returns: boolean
+      }
+      is_org_member: { Args: { _org: string; _user: string }; Returns: boolean }
     }
     Enums: {
+      app_role: "admin" | "treasurer" | "secretary" | "branch_leader"
       church_type: "matriz" | "filial"
       event_type: "culto" | "reuniao" | "campanha" | "outro"
       member_type: "member" | "visitor" | "leader"
@@ -379,6 +566,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "treasurer", "secretary", "branch_leader"],
       church_type: ["matriz", "filial"],
       event_type: ["culto", "reuniao", "campanha", "outro"],
       member_type: ["member", "visitor", "leader"],
