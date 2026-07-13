@@ -745,8 +745,27 @@ function MemberDialog({
             <Field label="Telefone">
               <input className="input" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </Field>
-            <Field label="Aniversário">
-              <input type="date" className="input" value={form.birthday ?? ""} onChange={(e) => setForm({ ...form, birthday: e.target.value })} />
+            <Field label="Data de nascimento">
+              <div className="flex items-center gap-2">
+                <input type="date" className="input flex-1" value={form.birthday ?? ""} onChange={(e) => setForm({ ...form, birthday: e.target.value })} />
+                {(() => { const a = calcAge(form.birthday); return a !== null ? <span className="inline-flex items-center rounded-full bg-surface-elevated px-3 py-1.5 text-xs font-medium text-muted-foreground whitespace-nowrap">{a} anos</span> : null; })()}
+              </div>
+            </Field>
+            <Field label="Sexo">
+              <div className="grid grid-cols-2 gap-2">
+                {(["masculino", "feminino"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setForm({ ...form, sex: form.sex === s ? null : s })}
+                    className={`rounded-xl border px-3 py-2.5 text-sm ${
+                      form.sex === s ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+                    }`}
+                  >
+                    {s === "masculino" ? "👨 Masculino" : "👩 Feminino"}
+                  </button>
+                ))}
+              </div>
             </Field>
             <Field label="Cargo ministerial">
               <select className="input" value={form.ministerial_role ?? ""} onChange={(e) => setForm({ ...form, ministerial_role: e.target.value })}>
@@ -760,6 +779,7 @@ function MemberDialog({
                 <option value="visitor">Visitante</option>
               </select>
             </Field>
+
             <Field label="Observações">
               <textarea className="input min-h-[60px]" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </Field>
