@@ -38,7 +38,7 @@ type Tx = {
   tither_member_id: string | null;
 };
 
-type SubTab = "overview" | "income" | "expense" | "tithers";
+type SubTab = "overview" | "income" | "expense" | "tithers" | "offers";
 
 function Finance() {
   const { user } = useAuth();
