@@ -697,11 +697,20 @@ function MemberDialog({
           <>
             <dl className="space-y-2 text-sm">
               <Row label="Telefone" value={m.phone || "—"} />
-              <Row label="Aniversário" value={m.birthday ? new Date(m.birthday).toLocaleDateString("pt-BR") : "—"} />
+              <Row
+                label="Nascimento"
+                value={
+                  m.birthday
+                    ? `🎂 ${formatBirthdayLong(m.birthday)}${calcAge(m.birthday) !== null ? ` (${calcAge(m.birthday)} anos)` : ""}`
+                    : "—"
+                }
+              />
+              <Row label="Sexo" value={m.sex === "masculino" ? "👨 Masculino" : m.sex === "feminino" ? "👩 Feminino" : "—"} />
               <Row label="Status" value={m.type === "visitor" ? "Visitante" : "Membro ativo"} />
               <Row label="Igreja" value={churchName} />
               {m.notes && <Row label="Observações" value={m.notes} />}
             </dl>
+
 
             <p className="mt-4 mb-2 text-xs uppercase tracking-wider text-muted-foreground">Mudar de igreja</p>
             <div className="flex flex-wrap gap-2">
