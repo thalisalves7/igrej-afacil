@@ -216,6 +216,8 @@ function Finance() {
 
       {tab === "tithers" ? (
         <TithersView churches={churches ?? []} churchLabel={churchLabel} />
+      ) : tab === "offers" ? (
+        <OffersView churches={churches ?? []} churchLabel={churchLabel} />
       ) : (
         <>
           <div className="neu-card mt-5 p-6">
