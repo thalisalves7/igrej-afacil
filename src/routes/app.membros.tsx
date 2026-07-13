@@ -23,7 +23,9 @@ type Member = {
   id: string; name: string; phone: string | null; email: string | null;
   birthday: string | null; type: "member" | "visitor"; church_id: string;
   ministerial_role: string | null; notes: string | null;
+  sex: "masculino" | "feminino" | null;
 };
+
 
 function Members() {
   const { user } = useAuth();
