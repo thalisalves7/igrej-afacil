@@ -6,15 +6,18 @@ import { useChurches, useActiveChurch, useInvalidateAll } from "@/lib/data";
 import { ChurchFilter } from "@/components/ChurchFilter";
 import { scopedChurchIds } from "./app.index";
 import { useState, useMemo, useRef } from "react";
-import { Phone, Cake, Search, Upload, CheckSquare, Square, X, Loader2, Trash2, ArrowRightLeft, Pencil } from "lucide-react";
+import { Phone, Cake, Search, Upload, CheckSquare, Square, X, Loader2, Trash2, ArrowRightLeft, Pencil, SlidersHorizontal, ChevronDown, ChevronUp, PartyPopper } from "lucide-react";
 import { MINISTERIAL_ROLES, roleTone } from "@/lib/ministerial-roles";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { feedback } from "@/lib/feedback";
+import { calcAge, getBand, BANDS, formatBirthdayLong, isBirthdayToday, isBirthdayThisMonth, type BandKey } from "@/lib/age";
 
 export const Route = createFileRoute("/app/membros")({
   component: Members,
 });
+
 
 type Member = {
   id: string; name: string; phone: string | null; email: string | null;
