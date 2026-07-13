@@ -646,8 +646,10 @@ function MemberDialog({
       ministerial_role: form.ministerial_role || null,
       church_id: form.church_id,
       type: form.type,
+      sex: form.sex || null,
       notes: form.notes || null,
-    }).eq("id", m.id);
+    } as any).eq("id", m.id);
+
     setBusy(false);
     if (error) return toast.error(error.message);
     feedback("success");
