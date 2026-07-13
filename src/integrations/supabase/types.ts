@@ -194,6 +194,7 @@ export type Database = {
           organization_id: string | null
           owner_id: string
           phone: string | null
+          sex: string | null
           type: Database["public"]["Enums"]["member_type"]
           updated_at: string
         }
@@ -209,6 +210,7 @@ export type Database = {
           organization_id?: string | null
           owner_id: string
           phone?: string | null
+          sex?: string | null
           type?: Database["public"]["Enums"]["member_type"]
           updated_at?: string
         }
@@ -224,6 +226,7 @@ export type Database = {
           organization_id?: string | null
           owner_id?: string
           phone?: string | null
+          sex?: string | null
           type?: Database["public"]["Enums"]["member_type"]
           updated_at?: string
         }
