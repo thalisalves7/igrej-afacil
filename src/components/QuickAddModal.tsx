@@ -180,9 +180,12 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
   const invalidate = useInvalidateAll();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [sex, setSex] = useState<"" | "masculino" | "feminino">("");
   const [churchId, setChurchId] = useState(() => churches?.[0]?.id ?? "");
   const [role, setRole] = useState<string>(memberType === "visitor" ? "Visitante" : "");
   const [busy, setBusy] = useState(false);
+  const age = calcAge(birthday);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +198,8 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
       type: memberType,
       name,
       phone: phone || null,
+      birthday: birthday || null,
+      sex: sex || null,
       ministerial_role: role || null,
     } as any);
     setBusy(false);
@@ -212,7 +217,32 @@ function MemberForm({ memberType, onDone }: { memberType: "member" | "visitor"; 
       <FormField label="Telefone (opcional)">
         <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
       </FormField>
+      <FormField label="Data de nascimento (opcional)">
+        <div className="flex items-center gap-2">
+          <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="input flex-1" />
+          {age !== null && (
+            <span className="inline-flex items-center rounded-full bg-surface-elevated px-3 py-2.5 text-xs font-medium text-muted-foreground whitespace-nowrap">{age} anos</span>
+          )}
+        </div>
+      </FormField>
+      <FormField label="Sexo (opcional)">
+        <div className="grid grid-cols-2 gap-2">
+          {(["masculino", "feminino"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSex(sex === s ? "" : s)}
+              className={`rounded-xl border px-3 py-2.5 text-sm ${
+                sex === s ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+              }`}
+            >
+              {s === "masculino" ? "👨 Masculino" : "👩 Feminino"}
+            </button>
+          ))}
+        </div>
+      </FormField>
       <ChurchSelect value={churchId} onChange={setChurchId} />
+
       {memberType === "member" && (
         <FormField label="Cargo ministerial">
           <div className="grid grid-cols-2 gap-2">
