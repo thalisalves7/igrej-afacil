@@ -27,6 +27,21 @@ type Member = {
 };
 
 
+type AdvFilters = {
+  status: "all" | "member" | "visitor";
+  sex: "all" | "masculino" | "feminino";
+  bands: Set<BandKey>;
+  exactAge: string;
+  ageFrom: string;
+  ageTo: string;
+  churchId: string; // "" = all
+};
+
+const emptyAdv = (): AdvFilters => ({
+  status: "all", sex: "all", bands: new Set<BandKey>(),
+  exactAge: "", ageFrom: "", ageTo: "", churchId: "",
+});
+
 function Members() {
   const { user } = useAuth();
   const { data: churches = [] } = useChurches();
@@ -38,6 +53,10 @@ function Members() {
   const [importOpen, setImportOpen] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [adv, setAdv] = useState<AdvFilters>(emptyAdv);
+  const [advOpen, setAdvOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [bdayTab, setBdayTab] = useState<"today" | "month">("today");
 
   const { data: members = [] } = useQuery({
     queryKey: ["members", user?.id, filter],
@@ -65,12 +84,55 @@ function Members() {
     () =>
       members.filter((m) => {
         const r = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
-        const okRole = roleFilter === "all" || r === roleFilter;
-        const okQ = !q || m.name.toLowerCase().includes(q.toLowerCase());
-        return okRole && okQ;
+        if (roleFilter !== "all" && r !== roleFilter) return false;
+        if (q && !m.name.toLowerCase().includes(q.toLowerCase())) return false;
+        // Advanced filters
+        if (adv.status !== "all" && m.type !== adv.status) return false;
+        if (adv.sex !== "all" && m.sex !== adv.sex) return false;
+        const age = calcAge(m.birthday);
+        const band = getBand(age);
+        if (adv.bands.size > 0 && !adv.bands.has(band.key)) return false;
+        if (adv.exactAge && age !== Number(adv.exactAge)) return false;
+        if (adv.ageFrom && (age === null || age < Number(adv.ageFrom))) return false;
+        if (adv.ageTo && (age === null || age > Number(adv.ageTo))) return false;
+        if (adv.churchId && m.church_id !== adv.churchId) return false;
+        return true;
       }),
-    [members, roleFilter, q],
+    [members, roleFilter, q, adv],
   );
+
+  const activeAdvLabels = useMemo(() => {
+    const arr: string[] = [];
+    if (adv.status !== "all") arr.push(adv.status === "member" ? "Membros" : "Visitantes");
+    if (adv.sex !== "all") arr.push(adv.sex === "masculino" ? "Masculino" : "Feminino");
+    adv.bands.forEach((k) => arr.push(BANDS.find((b) => b.key === k)?.label ?? k));
+    if (adv.exactAge) arr.push(`${adv.exactAge} anos`);
+    if (adv.ageFrom || adv.ageTo) arr.push(`${adv.ageFrom || "0"}–${adv.ageTo || "∞"} anos`);
+    if (adv.churchId) arr.push(churches.find((c) => c.id === adv.churchId)?.name ?? "Igreja");
+    return arr;
+  }, [adv, churches]);
+
+  // Stats
+  const activeMembers = useMemo(() => members.filter((m) => m.type === "member"), [members]);
+  const bandCounts = useMemo(() => {
+    const map: Record<BandKey, number> = { crianca: 0, adolescente: 0, jovem: 0, adulto: 0, idoso: 0, sem_info: 0 };
+    activeMembers.forEach((m) => { map[getBand(calcAge(m.birthday)).key]++; });
+    return map;
+  }, [activeMembers]);
+  const sexCounts = useMemo(() => {
+    let mal = 0, fem = 0;
+    activeMembers.forEach((m) => { if (m.sex === "masculino") mal++; else if (m.sex === "feminino") fem++; });
+    return { mal, fem };
+  }, [activeMembers]);
+
+  const totalActive = activeMembers.length;
+  const pct = (n: number) => (totalActive > 0 ? Math.round((n / totalActive) * 100) : 0);
+
+  // Birthdays
+  const bdayToday = useMemo(() => members.filter((m) => isBirthdayToday(m.birthday)), [members]);
+  const bdayMonth = useMemo(() => members.filter((m) => isBirthdayThisMonth(m.birthday))
+    .sort((a, b) => new Date(a.birthday!).getDate() - new Date(b.birthday!).getDate()), [members]);
+  const bdayList = bdayTab === "today" ? bdayToday : bdayMonth;
 
   const tabs = [
     { id: "all", label: "Todos", count: members.length },
@@ -78,6 +140,31 @@ function Members() {
       id: r, label: r, count: roleCounts[r] ?? 0,
     })),
   ];
+
+  // Quick band chips
+  const quickChips: { key: BandKey | "male" | "female"; icon: string; label: string }[] = [
+    { key: "crianca", icon: "👶", label: "Crianças" },
+    { key: "adolescente", icon: "🧒", label: "Adolescentes" },
+    { key: "jovem", icon: "🙋", label: "Jovens" },
+    { key: "adulto", icon: "👤", label: "Adultos" },
+    { key: "idoso", icon: "🧓", label: "Idosos" },
+    { key: "male", icon: "👨", label: "Homens" },
+    { key: "female", icon: "👩", label: "Mulheres" },
+  ];
+  const isChipActive = (k: BandKey | "male" | "female") =>
+    k === "male" ? adv.sex === "masculino"
+      : k === "female" ? adv.sex === "feminino"
+      : adv.bands.has(k);
+  const toggleChip = (k: BandKey | "male" | "female") => {
+    feedback("tap");
+    if (k === "male") setAdv((a) => ({ ...a, sex: a.sex === "masculino" ? "all" : "masculino" }));
+    else if (k === "female") setAdv((a) => ({ ...a, sex: a.sex === "feminino" ? "all" : "feminino" }));
+    else setAdv((a) => {
+      const bands = new Set(a.bands);
+      if (bands.has(k)) bands.delete(k); else bands.add(k);
+      return { ...a, bands };
+    });
+  };
 
   const toggleSelect = (id: string) => {
     feedback("tap");
@@ -132,16 +219,115 @@ function Members() {
         })}
       </div>
 
-      <div className="relative mt-4">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar pelo nome…"
-          className="w-full rounded-full border border-input bg-surface/60 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary"
-        />
+      {/* Visão da congregação (colapsável) */}
+      <div className="neu-card mt-4 overflow-hidden">
+        <button
+          onClick={() => { feedback("tap"); setStatsOpen((s) => !s); }}
+          className="flex w-full items-center justify-between p-4 text-left"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Visão da congregação</p>
+            <p className="text-sm font-semibold">{totalActive} membro(s) ativo(s)</p>
+          </div>
+          {statsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+        {statsOpen && (
+          <div className="border-t border-border/60 p-4 space-y-4">
+            <div>
+              <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">Faixa etária</p>
+              <div className="space-y-2">
+                {BANDS.map((b) => {
+                  const n = bandCounts[b.key];
+                  const p = pct(n);
+                  return (
+                    <div key={b.key} className="flex items-center gap-2 text-xs">
+                      <span className="w-32 truncate">{b.icon} {b.label}</span>
+                      <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-surface-elevated">
+                        <div className="absolute inset-y-0 left-0 rounded-full transition-all" style={{ width: `${p}%`, background: b.color }} />
+                      </div>
+                      <span className="w-14 text-right tabular-nums text-muted-foreground">{n} ({p}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">Sexo</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-surface-elevated p-2.5">
+                  <p className="text-muted-foreground">👨 Homens</p>
+                  <p className="text-base font-bold">{sexCounts.mal} <span className="text-xs font-normal text-muted-foreground">({pct(sexCounts.mal)}%)</span></p>
+                </div>
+                <div className="rounded-xl bg-surface-elevated p-2.5">
+                  <p className="text-muted-foreground">👩 Mulheres</p>
+                  <p className="text-base font-bold">{sexCounts.fem} <span className="text-xs font-normal text-muted-foreground">({pct(sexCounts.fem)}%)</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Aniversariantes */}
+      <div className="neu-card mt-4 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PartyPopper className="h-4 w-4 text-primary" />
+            <p className="text-sm font-semibold">Aniversariantes</p>
+          </div>
+          <div className="flex rounded-full bg-surface-elevated p-0.5 text-xs">
+            <button onClick={() => setBdayTab("today")} className={`rounded-full px-3 py-1 ${bdayTab === "today" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Hoje</button>
+            <button onClick={() => setBdayTab("month")} className={`rounded-full px-3 py-1 ${bdayTab === "month" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Este mês</button>
+          </div>
+        </div>
+        {bdayList.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum aniversariante {bdayTab === "today" ? "hoje" : "este mês"} 🎂</p>
+        ) : (
+          <div className="space-y-1.5">
+            {bdayList.slice(0, 6).map((m) => {
+              const age = calcAge(m.birthday);
+              const church = churches.find((c) => c.id === m.church_id)?.name;
+              const today = isBirthdayToday(m.birthday);
+              return (
+                <div key={m.id} className="flex items-center gap-3 rounded-xl bg-surface-elevated px-3 py-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-sm">🎂</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {m.name} {today ? <span className="text-primary">— {age} anos hoje 🎉</span> : <span className="text-muted-foreground">— {new Date(m.birthday!).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>}
+                    </p>
+                    {church && <p className="text-[11px] text-muted-foreground">{church}</p>}
+                  </div>
+                </div>
+              );
+            })}
+            {bdayList.length > 6 && <p className="pt-1 text-center text-[11px] text-muted-foreground">+ {bdayList.length - 6} outros</p>}
+          </div>
+        )}
+      </div>
+
+      {/* Busca + filtro avançado */}
+      <div className="relative mt-4 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar pelo nome…"
+            className="w-full rounded-full border border-input bg-surface/60 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <button
+          onClick={() => { feedback("tap"); setAdvOpen(true); }}
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border transition-all ${
+            activeAdvLabels.length > 0 ? "border-primary bg-primary/15 text-primary" : "border-border bg-surface/60"
+          }`}
+          aria-label="Filtros avançados"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Linha 1 — status por cargo (mantida) */}
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
         {tabs.map((t) => (
           <button
@@ -156,16 +342,54 @@ function Members() {
         ))}
       </div>
 
-      <div className="mt-5 space-y-2 pb-32">
+      {/* Linha 2 — chips rápidos (faixa etária + sexo) */}
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+        {quickChips.map((c) => {
+          const active = isChipActive(c.key);
+          return (
+            <button
+              key={c.key}
+              onClick={() => toggleChip(c.key)}
+              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium ${
+                active ? "border-primary bg-primary/15 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+              }`}
+            >
+              {c.icon} {c.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Contador */}
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>Exibindo {filtered.length} {filtered.length === 1 ? "pessoa" : "pessoas"}</span>
+        {activeAdvLabels.length > 0 && (
+          <>
+            <span>·</span>
+            <span>filtros: {activeAdvLabels.join(", ")}</span>
+            <button
+              onClick={() => { feedback("tap"); setAdv(emptyAdv()); }}
+              className="ml-auto text-primary hover:underline"
+            >
+              Limpar
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="mt-3 space-y-2 pb-32">
         {filtered.length === 0 && (
           <div className="neu-card p-6 text-center text-sm text-muted-foreground">
-            Nenhuma pessoa por aqui ainda. Use ➕ ou Importar.
+            {activeAdvLabels.length > 0 || q
+              ? <>Nenhum resultado. <button onClick={() => { setAdv(emptyAdv()); setQ(""); setRoleFilter("all"); }} className="text-primary hover:underline">Limpar filtros</button></>
+              : "Nenhuma pessoa por aqui ainda. Use ➕ ou Importar."}
           </div>
         )}
         {filtered.map((m) => {
           const role = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
           const t = roleTone(role);
           const isSel = selected.has(m.id);
+          const age = calcAge(m.birthday);
           return (
             <button
               key={m.id}
@@ -181,7 +405,10 @@ function Members() {
               )}
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-elevated text-base">{t.emoji}</span>
               <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-semibold">{m.name}</p>
+                <p className="truncate text-sm font-semibold">
+                  {m.name}
+                  {age !== null && <span className="ml-1.5 text-xs font-normal text-muted-foreground">({age} anos)</span>}
+                </p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.badge}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} /> {role}
@@ -227,11 +454,174 @@ function Members() {
 
       <MemberDialog member={openMember} churches={churches} onClose={() => setOpenMember(null)} onChanged={invalidate} />
       <ImportDialog open={importOpen} churches={churches} onClose={() => setImportOpen(false)} onDone={invalidate} />
+      <AdvFilterSheet
+        open={advOpen}
+        onClose={() => setAdvOpen(false)}
+        churches={churches}
+        value={adv}
+        onApply={(v) => { setAdv(v); setAdvOpen(false); feedback("success"); }}
+      />
     </div>
   );
 }
 
-// =============== Member detail modal ===============
+// =============== Advanced filter sheet ===============
+function AdvFilterSheet({
+  open, onClose, value, onApply, churches,
+}: {
+  open: boolean; onClose: () => void; value: AdvFilters;
+  onApply: (v: AdvFilters) => void;
+  churches: { id: string; name: string; type: "matriz" | "filial" }[];
+}) {
+  const [v, setV] = useState<AdvFilters>(value);
+  // Sync when opened
+  const openKey = open ? "1" : "0";
+  useMemo(() => { if (open) setV({ ...value, bands: new Set(value.bands) }); return null; }, [openKey]);
+
+  const toggleBand = (k: BandKey) => {
+    setV((s) => {
+      const bands = new Set(s.bands);
+      if (bands.has(k)) bands.delete(k); else bands.add(k);
+      return { ...s, bands };
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl border-border bg-surface">
+        <SheetHeader>
+          <SheetTitle>Filtrar membros</SheetTitle>
+          <SheetDescription className="text-xs">Combine os filtros como preferir.</SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-4 space-y-5">
+          <FilterSection title="Status">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { k: "all", label: "Todos" },
+                { k: "member", label: "Membro" },
+                { k: "visitor", label: "Visitante" },
+              ].map((o) => (
+                <Chip key={o.k} active={v.status === o.k} onClick={() => setV({ ...v, status: o.k as any })}>{o.label}</Chip>
+              ))}
+            </div>
+          </FilterSection>
+
+          <FilterSection title="Sexo">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { k: "all", label: "Todos" },
+                { k: "masculino", label: "👨 Masculino" },
+                { k: "feminino", label: "👩 Feminino" },
+              ].map((o) => (
+                <Chip key={o.k} active={v.sex === o.k} onClick={() => setV({ ...v, sex: o.k as any })}>{o.label}</Chip>
+              ))}
+            </div>
+          </FilterSection>
+
+          <FilterSection title="Faixa etária">
+            <div className="grid grid-cols-2 gap-2">
+              {BANDS.map((b) => {
+                const active = v.bands.has(b.key);
+                return (
+                  <button
+                    key={b.key}
+                    type="button"
+                    onClick={() => toggleBand(b.key)}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm ${
+                      active ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+                    }`}
+                  >
+                    <span>{b.icon}</span> <span className="truncate">{b.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </FilterSection>
+
+          <FilterSection title="Idade exata">
+            <input
+              type="number" min={0} max={130} inputMode="numeric"
+              value={v.exactAge}
+              onChange={(e) => setV({ ...v, exactAge: e.target.value })}
+              placeholder="Ex: 20"
+              className="input w-32"
+            />
+          </FilterSection>
+
+          <FilterSection title="Faixa personalizada">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Entre</span>
+              <input
+                type="number" min={0} max={130} inputMode="numeric" placeholder="18"
+                value={v.ageFrom} onChange={(e) => setV({ ...v, ageFrom: e.target.value })}
+                className="input w-20"
+              />
+              <span className="text-muted-foreground">e</span>
+              <input
+                type="number" min={0} max={130} inputMode="numeric" placeholder="25"
+                value={v.ageTo} onChange={(e) => setV({ ...v, ageTo: e.target.value })}
+                className="input w-20"
+              />
+              <span className="text-muted-foreground">anos</span>
+            </div>
+          </FilterSection>
+
+          {churches.length > 1 && (
+            <FilterSection title="Igreja">
+              <div className="flex flex-wrap gap-2">
+                <Chip active={!v.churchId} onClick={() => setV({ ...v, churchId: "" })}>Todas</Chip>
+                {churches.map((c) => (
+                  <Chip key={c.id} active={v.churchId === c.id} onClick={() => setV({ ...v, churchId: c.id })}>{c.name}</Chip>
+                ))}
+              </div>
+            </FilterSection>
+          )}
+        </div>
+
+        <div className="sticky bottom-0 -mx-6 mt-6 grid grid-cols-2 gap-2 border-t border-border bg-surface p-4">
+          <button
+            onClick={() => setV(emptyAdv())}
+            className="rounded-full border border-border py-2.5 text-sm"
+          >
+            Limpar filtros
+          </button>
+          <button
+            onClick={() => onApply(v)}
+            className="rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground"
+          >
+            Aplicar
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+        active ? "border-primary bg-primary/15 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+
 function MemberDialog({
   member, churches, onClose, onChanged,
 }: { member: Member | null; churches: { id: string; name: string; type: "matriz" | "filial" }[]; onClose: () => void; onChanged: () => void }) {
