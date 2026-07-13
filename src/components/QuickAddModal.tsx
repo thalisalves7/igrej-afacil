@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Wallet, Calendar, ArrowLeft, Loader2, TrendingUp, TrendingDown, UserPlus, UserCheck } from "lucide-react";
 import { MINISTERIAL_ROLES, roleTone } from "@/lib/ministerial-roles";
+import { calcAge } from "@/lib/age";
+
 
 type Step =
   | { kind: "root" }
