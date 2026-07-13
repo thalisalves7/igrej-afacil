@@ -38,7 +38,7 @@ type Tx = {
   tither_member_id: string | null;
 };
 
-type SubTab = "overview" | "income" | "expense" | "tithers";
+type SubTab = "overview" | "income" | "expense" | "tithers" | "offers";
 
 function Finance() {
   const { user } = useAuth();
@@ -185,6 +185,7 @@ function Finance() {
           { id: "income", label: "Entradas" },
           { id: "expense", label: "Saídas" },
           { id: "tithers", label: "Dizimistas" },
+          { id: "offers", label: "Ofertas" },
         ] as const).map((t) => (
           <button
             key={t.id}
@@ -215,6 +216,8 @@ function Finance() {
 
       {tab === "tithers" ? (
         <TithersView churches={churches ?? []} churchLabel={churchLabel} />
+      ) : tab === "offers" ? (
+        <OffersView churches={churches ?? []} churchLabel={churchLabel} />
       ) : (
         <>
           <div className="neu-card mt-5 p-6">
@@ -816,6 +819,273 @@ function TithersView({ churches, churchLabel }: { churches: Church[]; churchLabe
 function isTithe(t: Tx) {
   return t.type === "income" && (t.category === "Dízimo" || !!t.tither_name);
 }
+
+function isOffer(t: Tx) {
+  return t.type === "income" && (t.category === "Oferta" || t.category === "Oferta Especial");
+}
+
+function OffersView({ churches, churchLabel }: { churches: Church[]; churchLabel: string }) {
+  const { user } = useAuth();
+  const { value: filter } = useActiveChurch();
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [churchFilter, setChurchFilter] = useState<string>("all");
+
+  const monthStart = useMemo(() => new Date(year, month, 1).toISOString().slice(0, 10), [year, month]);
+  const nextMonthStart = useMemo(() => new Date(year, month + 1, 1).toISOString().slice(0, 10), [year, month]);
+  const prevMonthStart = useMemo(() => new Date(year, month - 1, 1).toISOString().slice(0, 10), [year, month]);
+
+  const { data: monthTx = [], isLoading } = useQuery({
+    queryKey: ["offers", user?.id, filter, year, month],
+    enabled: !!user,
+    queryFn: async (): Promise<Tx[]> => {
+      const ids = scopedChurchIds(churches, filter);
+      let q = supabase.from("transactions").select("*")
+        .eq("type", "income")
+        .gte("occurred_at", prevMonthStart)
+        .lt("occurred_at", nextMonthStart);
+      if (ids) q = q.in("church_id", ids);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).map((d) => ({ ...d, amount: Number(d.amount) })) as Tx[];
+    },
+  });
+
+  const curOffers = useMemo(() => monthTx.filter((t) => isOffer(t) && t.occurred_at >= monthStart && t.occurred_at < nextMonthStart), [monthTx, monthStart, nextMonthStart]);
+  const prevOffers = useMemo(() => monthTx.filter((t) => isOffer(t) && t.occurred_at >= prevMonthStart && t.occurred_at < monthStart), [monthTx, prevMonthStart, monthStart]);
+
+  const churchName = (id: string) => churches.find((c) => c.id === id)?.name ?? "—";
+
+  const filteredOffers = useMemo(() => {
+    if (churchFilter === "all") return curOffers;
+    return curOffers.filter((t) => t.church_id === churchFilter);
+  }, [curOffers, churchFilter]);
+
+  const totalCur = curOffers.reduce((a, b) => a + b.amount, 0);
+  const totalPrev = prevOffers.reduce((a, b) => a + b.amount, 0);
+  const growth = totalPrev === 0 ? (totalCur > 0 ? 100 : 0) : ((totalCur - totalPrev) / totalPrev) * 100;
+
+  const byChurch = useMemo(() => {
+    const m = new Map<string, number>();
+    curOffers.forEach((t) => m.set(t.church_id, (m.get(t.church_id) ?? 0) + t.amount));
+    return [...m.entries()]
+      .map(([id, total]) => ({ id, total, name: churchName(id) }))
+      .sort((a, b) => b.total - a.total);
+  }, [curOffers, churches]);
+  const topChurch = byChurch[0];
+
+  const chart = useMemo(() => {
+    const days = new Date(year, month + 1, 0).getDate();
+    const arr = Array.from({ length: days }, (_, i) => ({ d: i + 1, valor: 0 }));
+    curOffers.forEach((t) => {
+      const d = new Date(t.occurred_at).getDate();
+      arr[d - 1].valor += t.amount;
+    });
+    return arr;
+  }, [curOffers, year, month]);
+
+  const navMonth = (delta: number) => {
+    feedback("switch");
+    let y = year, m = month + delta;
+    if (m < 0) { m = 11; y -= 1; }
+    if (m > 11) { m = 0; y += 1; }
+    setYear(y); setMonth(m);
+  };
+
+  const shareWhatsapp = () => {
+    feedback("success");
+    const lines = [
+      `📊 *Relatório de Ofertas — ${monthLabel(year, month)}*`,
+      ``,
+      `🎁 Ofertas registradas: ${curOffers.length}`,
+      `💰 Total arrecadado: ${fmt(totalCur)}`,
+      ``,
+      topChurch ? `⭐ Maior arrecadação: ${topChurch.name} — ${fmt(topChurch.total)}` : "",
+      ``,
+      `📈 Crescimento: ${growth >= 0 ? "+" : ""}${growth.toFixed(0)}% vs mês anterior`,
+      ``,
+      `🙏 Igreja Fácil`,
+    ].filter(Boolean).join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, "_blank");
+  };
+
+  const downloadPdf = async () => {
+    feedback("success");
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text("Relatório de Ofertas", 14, 20);
+      doc.setFontSize(11);
+      doc.setTextColor(120);
+      doc.text(`${churchLabel} — ${monthLabel(year, month)}`, 14, 28);
+
+      doc.setTextColor(0);
+      doc.setFontSize(13);
+      doc.text(`Total arrecadado: ${fmt(totalCur)}`, 14, 44);
+      doc.text(`Ofertas: ${curOffers.length}`, 14, 52);
+      doc.text(`Crescimento: ${growth >= 0 ? "+" : ""}${growth.toFixed(0)}% vs mês anterior`, 14, 60);
+
+      let y = 76;
+      if (byChurch.length) {
+        doc.setFontSize(12);
+        doc.text("Por igreja", 14, y); y += 8;
+        doc.setFontSize(10);
+        byChurch.forEach((c) => {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.text(`${c.name}: ${fmt(c.total)}`, 14, y); y += 6;
+        });
+        y += 4;
+      }
+
+      doc.setFontSize(12);
+      doc.text("Ofertas do mês", 14, y); y += 8;
+      doc.setFontSize(10);
+      filteredOffers.forEach((t) => {
+        if (y > 280) { doc.addPage(); y = 20; }
+        const line = `${new Date(t.occurred_at).toLocaleDateString("pt-BR")}   ${churchName(t.church_id).slice(0, 18).padEnd(18)} ${fmt(t.amount)}   ${t.description ?? ""}`.slice(0, 95);
+        doc.text(line, 14, y);
+        y += 6;
+      });
+
+      doc.setFontSize(9); doc.setTextColor(140);
+      doc.text("Relatório gerado pelo Igreja Fácil", 14, 290);
+      doc.save(`ofertas-${year}-${String(month + 1).padStart(2, "0")}.pdf`);
+    } catch {
+      toast.error("Não foi possível gerar o PDF.");
+    }
+  };
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Month picker */}
+      <div className="neu-card mt-5 flex items-center justify-between p-3">
+        <button onClick={() => navMonth(-1)} className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface-elevated active:scale-95 transition-transform">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ciclo mensal</p>
+          <p className="text-sm font-bold capitalize">{monthLabel(year, month)}</p>
+        </div>
+        <button onClick={() => navMonth(1)} className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface-elevated active:scale-95 transition-transform">
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <SummaryCard icon={Wallet} label="Ofertas" value={String(curOffers.length)} accent="primary" />
+        <SummaryCard icon={Wallet} label="Total do mês" value={fmt(totalCur)} accent="success" />
+        <SummaryCard
+          icon={Sparkles}
+          label="Maior arrecadação"
+          value={topChurch ? topChurch.name : "—"}
+          sub={topChurch ? fmt(topChurch.total) : ""}
+          accent="primary"
+        />
+        <SummaryCard
+          icon={growth >= 0 ? ArrowUpRight : ArrowDownRight}
+          label="Crescimento"
+          value={`${growth >= 0 ? "+" : ""}${growth.toFixed(0)}%`}
+          sub="vs mês anterior"
+          accent={growth >= 0 ? "success" : "destructive"}
+        />
+      </div>
+
+      {/* Chart */}
+      <div className="neu-card mt-4 p-4">
+        <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Ofertas por dia</p>
+        <div className="h-[180px]">
+          {isLoading ? (
+            <div className="grid h-full place-items-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+                <CartesianGrid stroke="oklch(1 0 0 / 6%)" vertical={false} />
+                <XAxis dataKey="d" stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis stroke="oklch(0.68 0.018 260)" fontSize={10} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
+                  labelFormatter={(l) => `Dia ${l}`}
+                  formatter={(v: number) => fmt(v)}
+                />
+                <Bar dataKey="valor" name="Ofertas" radius={[6, 6, 0, 0]} fill="var(--primary)" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <button onClick={shareWhatsapp} className="neu-card flex items-center justify-center gap-2 p-3 text-sm font-medium active:scale-[0.98] transition-transform">
+          <MessageCircle className="h-4 w-4 text-success" /> Compartilhar
+        </button>
+        <button onClick={downloadPdf} className="neu-card flex items-center justify-center gap-2 p-3 text-sm font-medium active:scale-[0.98] transition-transform">
+          <FileDown className="h-4 w-4 text-primary" /> Baixar PDF
+        </button>
+      </div>
+
+      {/* Church filter */}
+      {byChurch.length > 0 && (
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => { setChurchFilter("all"); feedback("tap"); }}
+            className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium ${
+              churchFilter === "all" ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+            }`}
+          >
+            Todas as igrejas
+          </button>
+          {byChurch.map((c) => {
+            const active = churchFilter === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => { setChurchFilter(c.id); feedback("tap"); }}
+                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  active ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface/60 text-muted-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List */}
+      <h2 className="mt-6 mb-3 text-sm font-semibold text-muted-foreground">Ofertas do mês</h2>
+      <div className="space-y-2 pb-10">
+        {filteredOffers.length === 0 && (
+          <div className="neu-card p-5 text-center text-sm text-muted-foreground">
+            Nenhuma oferta registrada neste mês.
+          </div>
+        )}
+        {filteredOffers.map((t) => (
+          <div
+            key={t.id}
+            className="neu-card flex w-full items-center gap-3 p-3.5"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Wallet className="h-4 w-4" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-medium">{t.category || "Oferta"}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {churchName(t.church_id)} · {new Date(t.occurred_at).toLocaleDateString("pt-BR")}
+                {t.description && ` · ${t.description}`}
+              </p>
+            </div>
+            <p className="text-sm font-semibold text-success">+{fmt(t.amount)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 function SummaryCard({
   icon: Icon, label, value, sub, accent = "primary",
