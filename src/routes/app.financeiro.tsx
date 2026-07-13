@@ -185,6 +185,7 @@ function Finance() {
           { id: "income", label: "Entradas" },
           { id: "expense", label: "Saídas" },
           { id: "tithers", label: "Dizimistas" },
+          { id: "offers", label: "Ofertas" },
         ] as const).map((t) => (
           <button
             key={t.id}
