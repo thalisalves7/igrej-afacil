@@ -15,13 +15,13 @@ export const Route = createFileRoute("/app/equipe")({
   component: EquipePage,
 });
 
-const ROLES: AppRole[] = ["admin", "treasurer", "secretary", "branch_leader"];
+const ROLES: AppRole[] = ["admin_filial", "secretario", "tesoureiro", "lider_louvor", "diacono"];
 
 const inviteSchema = z.object({
   full_name: z.string().trim().min(2, "Informe o nome").max(100),
   email: z.string().trim().email("Email inválido").max(255),
   phone: z.string().trim().max(30).optional().or(z.literal("")),
-  role: z.enum(["admin", "treasurer", "secretary", "branch_leader"]),
+  role: z.enum(["dono", "admin_filial", "secretario", "tesoureiro", "lider_louvor", "diacono"]),
   branch_church_id: z.string().uuid().nullable(),
 });
 
