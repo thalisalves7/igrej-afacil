@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches } from "@/lib/data";
 import { useOrgContext, can, type AppRole } from "@/lib/org";
-import { Home, Users, User, Plus, Loader2, Wallet, Shield } from "lucide-react";
+import { Home, Users, User, Plus, Loader2, Wallet, Shield, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { QuickAddModal } from "@/components/QuickAddModal";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -13,9 +13,10 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const { data: churches, isLoading: churchesLoading } = useChurches();
+  const { data: orgCtx, isLoading: orgLoading } = useOrgContext();
   const location = useLocation();
   const [quickOpen, setQuickOpen] = useState(false);
 
@@ -24,17 +25,55 @@ function AppLayout() {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!user || churchesLoading) return;
+    if (!user || churchesLoading || orgLoading) return;
+    // Only the owner of an organization can/should create the matriz.
+    // Invited members (admin/treasurer/secretary/branch_leader) never see onboarding.
+    if (!orgCtx?.is_owner) return;
     const hasMatriz = (churches ?? []).some((c) => c.type === "matriz");
     if (!hasMatriz && location.pathname !== "/app/onboarding") {
       navigate({ to: "/app/onboarding" });
     }
-  }, [user, churches, churchesLoading, navigate, location.pathname]);
+  }, [user, churches, churchesLoading, orgCtx, orgLoading, navigate, location.pathname]);
 
-  if (loading || !user || churchesLoading) {
+  if (loading || !user || churchesLoading || orgLoading) {
     return (
       <div className="grid min-h-screen place-items-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Invited user without a valid org link — never show onboarding or blank screen.
+  if (!orgCtx) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6">
+        <div className="neu-card max-w-sm p-8 text-center">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <h1 className="mt-4 text-lg font-semibold">Sua conta não está configurada</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Fale com o administrador do ministério para liberar seu acesso.
+          </p>
+          <div className="mt-6 flex flex-col gap-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
+              style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
+            >
+              Tentar novamente
+            </button>
+            <button
+              onClick={async () => {
+                await signOut();
+                navigate({ to: "/auth" });
+              }}
+              className="inline-flex h-11 items-center justify-center rounded-full border border-input bg-background text-sm font-medium hover:bg-accent"
+            >
+              Sair
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -57,6 +96,7 @@ function AppLayout() {
     </div>
   );
 }
+
 
 function RoleAwareBottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
   const { data: ctx } = useOrgContext();
