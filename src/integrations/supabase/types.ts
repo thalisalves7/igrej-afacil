@@ -183,7 +183,9 @@ export type Database = {
       }
       members: {
         Row: {
+          access_app: boolean
           birthday: string | null
+          cargo_id: string | null
           church_id: string
           created_at: string
           email: string | null
@@ -194,12 +196,16 @@ export type Database = {
           organization_id: string | null
           owner_id: string
           phone: string | null
+          promoted_at: string | null
+          promoted_by: string | null
           sex: string | null
           type: Database["public"]["Enums"]["member_type"]
           updated_at: string
         }
         Insert: {
+          access_app?: boolean
           birthday?: string | null
+          cargo_id?: string | null
           church_id: string
           created_at?: string
           email?: string | null
@@ -210,12 +216,16 @@ export type Database = {
           organization_id?: string | null
           owner_id: string
           phone?: string | null
+          promoted_at?: string | null
+          promoted_by?: string | null
           sex?: string | null
           type?: Database["public"]["Enums"]["member_type"]
           updated_at?: string
         }
         Update: {
+          access_app?: boolean
           birthday?: string | null
+          cargo_id?: string | null
           church_id?: string
           created_at?: string
           email?: string | null
@@ -226,6 +236,8 @@ export type Database = {
           organization_id?: string | null
           owner_id?: string
           phone?: string | null
+          promoted_at?: string | null
+          promoted_by?: string | null
           sex?: string | null
           type?: Database["public"]["Enums"]["member_type"]
           updated_at?: string
@@ -435,9 +447,23 @@ export type Database = {
         Returns: boolean
       }
       is_org_member: { Args: { _org: string; _user: string }; Returns: boolean }
+      promote_member: {
+        Args: { _cargo_id: string; _member_id: string }
+        Returns: Json
+      }
+      revoke_org_member: {
+        Args: { _org_member_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      app_role: "admin" | "treasurer" | "secretary" | "branch_leader"
+      app_role:
+        | "dono"
+        | "admin_filial"
+        | "secretario"
+        | "tesoureiro"
+        | "lider_louvor"
+        | "diacono"
       church_type: "matriz" | "filial"
       event_type: "culto" | "reuniao" | "campanha" | "outro"
       member_type: "member" | "visitor" | "leader"
@@ -569,7 +595,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "treasurer", "secretary", "branch_leader"],
+      app_role: [
+        "dono",
+        "admin_filial",
+        "secretario",
+        "tesoureiro",
+        "lider_louvor",
+        "diacono",
+      ],
       church_type: ["matriz", "filial"],
       event_type: ["culto", "reuniao", "campanha", "outro"],
       member_type: ["member", "visitor", "leader"],

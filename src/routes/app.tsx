@@ -112,7 +112,7 @@ function AppLayout() {
 function RoleAwareBottomNav({ active, onPlus }: { active: string; onPlus: () => void }) {
   const { data: ctx } = useOrgContext();
   const role: AppRole | null = ctx?.role ?? null;
-  return <BottomNav active={active} onPlus={onPlus} role={role} canManageTeam={ctx?.role === "admin" || !!ctx?.is_owner} />;
+  return <BottomNav active={active} onPlus={onPlus} role={role} canManageTeam={ctx?.role === "dono" || ctx?.role === "admin_filial"} />;
 }
 
 type NavItem = { kind: "link"; to: string; icon: typeof Home; label: string } | { kind: "plus" };
