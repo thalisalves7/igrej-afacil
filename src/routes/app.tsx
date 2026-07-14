@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, Link, useLocation, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { useChurches } from "@/lib/data";
@@ -7,10 +7,21 @@ import { Home, Users, User, Plus, Loader2, Wallet, Shield, AlertCircle } from "l
 import { useState } from "react";
 import { QuickAddModal } from "@/components/QuickAddModal";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app")({
+  // Auth-gated subtree: skip SSR (Supabase session lives in localStorage) and
+  // enforce server-of-route redirect before any child renders.
+  ssr: false,
+  beforeLoad: async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      throw redirect({ to: "/auth" });
+    }
+  },
   component: AppLayout,
 });
+
 
 function AppLayout() {
   const { user, loading, signOut } = useAuth();
