@@ -52,7 +52,7 @@ function EquipePage() {
   const [openInvite, setOpenInvite] = useState(false);
   const [shareInvitation, setShareInvitation] = useState<Invitation | null>(null);
 
-  const canManage = ctx?.role === "admin" || ctx?.is_owner;
+  const canManage = ctx?.role === "dono" || ctx?.role === "admin_filial";
 
   const { data: members = [], isLoading: mLoading, refetch: refetchMembers } = useQuery({
     queryKey: ["team-members", ctx?.organization_id],
@@ -101,7 +101,7 @@ function EquipePage() {
     );
   }
 
-  if (!canManage && ctx.role !== "admin") {
+  if (!canManage && ctx.role !== "dono" && ctx.role !== "admin_filial") {
     return (
       <div className="mx-auto max-w-md px-4 py-12 text-center">
         <Shield className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
@@ -338,13 +338,13 @@ function InviteModal({
       email,
       phone,
       role,
-      branch_church_id: role === "branch_leader" ? branchId : null,
+      branch_church_id: role === "admin_filial" ? branchId : null,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
-    if (role === "branch_leader" && !branchId) {
+    if (role === "admin_filial" && !branchId) {
       toast.error("Selecione a filial");
       return;
     }
@@ -460,7 +460,7 @@ function InviteModal({
               ))}
             </div>
 
-            {role === "branch_leader" && (
+            {role === "admin_filial" && (
               <Field label="Qual filial ele(a) irá administrar?" required>
                 {filiais.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
