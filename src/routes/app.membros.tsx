@@ -13,6 +13,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { toast } from "sonner";
 import { feedback } from "@/lib/feedback";
 import { calcAge, getBand, BANDS, formatBirthdayLong, isBirthdayToday, isBirthdayThisMonth, type BandKey } from "@/lib/age";
+import { assignableCargos, CARGOS_BY_ID, useOrgContext, type CargoId } from "@/lib/org";
+import { Award, Copy, Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/membros")({
   component: Members,
@@ -24,6 +26,7 @@ type Member = {
   birthday: string | null; type: "member" | "visitor"; church_id: string;
   ministerial_role: string | null; notes: string | null;
   sex: "masculino" | "feminino" | null;
+  cargo_id: string | null; access_app: boolean;
 };
 
 
@@ -628,12 +631,17 @@ function MemberDialog({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
   const [busy, setBusy] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const { data: ctx } = useOrgContext();
 
   if (!member) return null;
   const m = member;
-  const role = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
-  const t = roleTone(role);
+  const cargo = m.cargo_id ? CARGOS_BY_ID[m.cargo_id as CargoId] : null;
+  const role = cargo?.label || m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+  const emoji = cargo?.icon;
+  const t = roleTone(m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro"));
   const churchName = churches.find((c) => c.id === m.church_id)?.name ?? "—";
+  const canPromoteHere = ctx && (ctx.role === "dono" || (ctx.role === "admin_filial" && (!ctx.branch_church_id || ctx.branch_church_id === m.church_id)));
 
   const startEdit = () => { setForm(m); setEditing(true); feedback("tap"); };
 
@@ -684,10 +692,10 @@ function MemberDialog({
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-border bg-surface sm:rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/15 text-2xl">{t.emoji}</span>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/15 text-2xl">{emoji || t.emoji}</span>
             <div>
               <p className="text-lg font-bold">{m.name}</p>
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${t.badge}`}>{role}</span>
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${t.badge}`}>{role}{m.access_app && cargo?.acessoApp ? " · 🔓" : ""}</span>
             </div>
           </DialogTitle>
           <DialogDescription className="text-xs">{churchName}</DialogDescription>
@@ -728,13 +736,23 @@ function MemberDialog({
               ))}
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button onClick={startEdit} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground active:scale-95 transition-transform">
-                <Pencil className="h-4 w-4" /> Editar
-              </button>
-              <button onClick={remove} className="inline-flex items-center justify-center gap-2 rounded-full border border-destructive/40 py-2.5 text-sm font-semibold text-destructive active:scale-95 transition-transform">
-                <Trash2 className="h-4 w-4" /> Excluir
-              </button>
+            <div className="mt-5 space-y-2">
+              {canPromoteHere && (
+                <button
+                  onClick={() => { feedback("tap"); setPromoteOpen(true); }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 py-2.5 text-sm font-semibold text-primary active:scale-95 transition-transform"
+                >
+                  <Award className="h-4 w-4" /> Promover / Alterar cargo
+                </button>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={startEdit} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground active:scale-95 transition-transform">
+                  <Pencil className="h-4 w-4" /> Editar
+                </button>
+                <button onClick={remove} className="inline-flex items-center justify-center gap-2 rounded-full border border-destructive/40 py-2.5 text-sm font-semibold text-destructive active:scale-95 transition-transform">
+                  <Trash2 className="h-4 w-4" /> Excluir
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -792,7 +810,117 @@ function MemberDialog({
           </div>
         )}
       </DialogContent>
+      <PromoteSheet
+        open={promoteOpen}
+        member={m}
+        callerRole={ctx?.role ?? null}
+        onClose={() => setPromoteOpen(false)}
+        onDone={() => { setPromoteOpen(false); onChanged(); onClose(); }}
+      />
     </Dialog>
+  );
+}
+
+function PromoteSheet({
+  open, member, callerRole, onClose, onDone,
+}: {
+  open: boolean; member: Member; callerRole: import("@/lib/org").AppRole | null;
+  onClose: () => void; onDone: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const options = assignableCargos(callerRole);
+  const current = member.cargo_id as CargoId | null;
+
+  const apply = async (cargoId: CargoId) => {
+    if (cargoId === current) return;
+    const target = CARGOS_BY_ID[cargoId];
+    if (target.acessoApp && !member.email) {
+      toast.error("Este membro precisa ter e-mail cadastrado para receber acesso ao app.");
+      return;
+    }
+    if (cargoId === "visitante" || cargoId === "membro") {
+      if (!confirm(`Rebaixar ${member.name} para ${target.label}? O acesso ao app será removido.`)) return;
+    } else if (!confirm(`Promover ${member.name} a ${target.label}?`)) return;
+    setBusy(cargoId);
+    const { data, error } = await supabase.rpc("promote_member", { _member_id: member.id, _cargo_id: cargoId });
+    setBusy(null);
+    if (error) { feedback("error"); return toast.error(error.message); }
+    feedback("success");
+    const res = data as any;
+    if (res?.status === "invited") {
+      const link = `${window.location.origin}/auth?email=${encodeURIComponent(member.email ?? "")}`;
+      setInviteLink(link);
+      toast.success("Convite criado! Compartilhe o link.");
+      return;
+    }
+    if (res?.status === "linked") toast.success("Cargo atribuído e acesso liberado!");
+    else toast.success("Cargo atualizado!");
+    onDone();
+  };
+
+  const share = async () => {
+    if (!inviteLink) return;
+    const text = `Olá ${member.name}! Você foi convidado(a) para acessar o app da igreja. Entre com este e-mail (${member.email}) em: ${inviteLink}`;
+    if (navigator.share) { try { await navigator.share({ text, url: inviteLink }); } catch {} }
+    else { await navigator.clipboard.writeText(text); toast.success("Copiado!"); }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && (setInviteLink(null), onClose())}>
+      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl border-border bg-surface">
+        <SheetHeader>
+          <SheetTitle>Promover / Alterar cargo</SheetTitle>
+          <SheetDescription className="text-xs">Escolha o novo cargo de {member.name}.</SheetDescription>
+        </SheetHeader>
+
+        {inviteLink ? (
+          <div className="mt-4 space-y-3">
+            <div className="neu-card p-4 text-sm">
+              <p className="font-semibold">Convite gerado 🎉</p>
+              <p className="mt-1 text-xs text-muted-foreground">Peça para {member.name} se cadastrar com o e-mail <b>{member.email}</b>. O acesso é liberado automaticamente.</p>
+              <div className="mt-3 flex items-center gap-2 rounded-xl bg-surface-elevated p-2">
+                <p className="flex-1 truncate text-xs">{inviteLink}</p>
+                <button onClick={() => { navigator.clipboard.writeText(inviteLink); feedback("tap"); toast.success("Link copiado"); }} className="rounded-lg border border-border p-1.5"><Copy className="h-3.5 w-3.5" /></button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { setInviteLink(null); onDone(); }} className="rounded-full border border-border py-2.5 text-sm">Fechar</button>
+              <button onClick={share} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground">
+                <Share2 className="h-4 w-4" /> Compartilhar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {options.length === 0 && (
+              <p className="rounded-xl bg-surface-elevated p-3 text-sm text-muted-foreground">Você não tem permissão para atribuir cargos.</p>
+            )}
+            {options.map((c) => {
+              const active = current === c.id;
+              return (
+                <button
+                  key={c.id}
+                  disabled={busy !== null || active}
+                  onClick={() => apply(c.id)}
+                  className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
+                    active ? "border-primary bg-primary/10" : "border-border bg-surface/60 hover:border-primary/40 active:scale-[0.99]"
+                  } disabled:opacity-60`}
+                >
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-elevated text-lg">{c.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">{c.label} {active && <span className="ml-1 text-[10px] font-normal text-primary">(atual)</span>}</p>
+                    <p className="truncate text-xs text-muted-foreground">{c.descricao}</p>
+                  </div>
+                  {c.acessoApp ? <span className="text-[10px] text-primary">🔓 App</span> : <span className="text-[10px] text-muted-foreground">Sem app</span>}
+                  {busy === c.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
