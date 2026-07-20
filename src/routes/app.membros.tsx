@@ -636,9 +636,12 @@ function MemberDialog({
 
   if (!member) return null;
   const m = member;
-  const role = m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
-  const t = roleTone(role);
+  const cargo = m.cargo_id ? CARGOS_BY_ID[m.cargo_id as CargoId] : null;
+  const role = cargo?.label || m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro");
+  const emoji = cargo?.icon;
+  const t = roleTone(m.ministerial_role || (m.type === "visitor" ? "Visitante" : "Membro"));
   const churchName = churches.find((c) => c.id === m.church_id)?.name ?? "—";
+  const canPromoteHere = ctx && (ctx.role === "dono" || (ctx.role === "admin_filial" && (!ctx.branch_church_id || ctx.branch_church_id === m.church_id)));
 
   const startEdit = () => { setForm(m); setEditing(true); feedback("tap"); };
 
