@@ -631,6 +631,8 @@ function MemberDialog({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
   const [busy, setBusy] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const { data: ctx } = useOrgContext();
 
   if (!member) return null;
   const m = member;
