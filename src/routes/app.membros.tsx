@@ -692,10 +692,10 @@ function MemberDialog({
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-border bg-surface sm:rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/15 text-2xl">{t.emoji}</span>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/15 text-2xl">{emoji || t.emoji}</span>
             <div>
               <p className="text-lg font-bold">{m.name}</p>
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${t.badge}`}>{role}</span>
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${t.badge}`}>{role}{m.access_app && cargo?.acessoApp ? " · 🔓" : ""}</span>
             </div>
           </DialogTitle>
           <DialogDescription className="text-xs">{churchName}</DialogDescription>
