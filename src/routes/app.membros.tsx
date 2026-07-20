@@ -13,6 +13,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { toast } from "sonner";
 import { feedback } from "@/lib/feedback";
 import { calcAge, getBand, BANDS, formatBirthdayLong, isBirthdayToday, isBirthdayThisMonth, type BandKey } from "@/lib/age";
+import { assignableCargos, CARGOS_BY_ID, useOrgContext, type CargoId } from "@/lib/org";
+import { Award, Copy, Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/membros")({
   component: Members,
