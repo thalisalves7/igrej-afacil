@@ -736,13 +736,23 @@ function MemberDialog({
               ))}
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button onClick={startEdit} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground active:scale-95 transition-transform">
-                <Pencil className="h-4 w-4" /> Editar
-              </button>
-              <button onClick={remove} className="inline-flex items-center justify-center gap-2 rounded-full border border-destructive/40 py-2.5 text-sm font-semibold text-destructive active:scale-95 transition-transform">
-                <Trash2 className="h-4 w-4" /> Excluir
-              </button>
+            <div className="mt-5 space-y-2">
+              {canPromoteHere && (
+                <button
+                  onClick={() => { feedback("tap"); setPromoteOpen(true); }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/10 py-2.5 text-sm font-semibold text-primary active:scale-95 transition-transform"
+                >
+                  <Award className="h-4 w-4" /> Promover / Alterar cargo
+                </button>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={startEdit} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground active:scale-95 transition-transform">
+                  <Pencil className="h-4 w-4" /> Editar
+                </button>
+                <button onClick={remove} className="inline-flex items-center justify-center gap-2 rounded-full border border-destructive/40 py-2.5 text-sm font-semibold text-destructive active:scale-95 transition-transform">
+                  <Trash2 className="h-4 w-4" /> Excluir
+                </button>
+              </div>
             </div>
           </>
         ) : (
