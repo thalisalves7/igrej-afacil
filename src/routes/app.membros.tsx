@@ -26,6 +26,7 @@ type Member = {
   birthday: string | null; type: "member" | "visitor"; church_id: string;
   ministerial_role: string | null; notes: string | null;
   sex: "masculino" | "feminino" | null;
+  cargo_id: string | null; access_app: boolean;
 };
 
 
